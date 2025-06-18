@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Heater control command `set-heater` for controlling heating modes
+- Support for four heating modes: off, heater, solar-priority, solar-only
+- Comprehensive unit tests for heater control functionality
+- Extended timeout support for monitoring to handle connection delays
+
+### Fixed
+- Packet buffering issues in monitor causing burst delivery of stale packets
+- Reduced read chunk size from 64 to 24 bytes for smoother real-time monitoring
+- Linting issues with trailing whitespace in test files
+
+### Changed
+- Monitor timeout increased from 1s to 30s to handle longer delays between packets
+- Improved monitoring stability for network-based serial connections
+
 ## [0.1.1] - 2024-12-18
 
 ### Added

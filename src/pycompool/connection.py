@@ -143,7 +143,7 @@ class SerialConnection:
                 buf = bytearray()
 
                 while True:
-                    chunk = conn.read(64)
+                    chunk = conn.read(24)
                     if chunk:
                         buf.extend(chunk)
 

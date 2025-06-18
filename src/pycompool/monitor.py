@@ -68,7 +68,7 @@ class PoolMonitor:
         """Main monitoring loop."""
         last_activity = time.time()
 
-        for packet_data in self.connection.read_packets(packet_size=24):
+        for packet_data in self.connection.read_packets(packet_size=24, timeout=30.0):
             if self._stop_monitoring:
                 break
 

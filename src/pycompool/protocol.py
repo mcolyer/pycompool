@@ -176,13 +176,14 @@ def parse_heartbeat_packet(data: bytes) -> Optional[dict]:
     }
 
 
-def create_command_packet(pool_temp: int = 0, spa_temp: int = 0, enable_bits: int = 0) -> bytes:
+def create_command_packet(pool_temp: int = 0, spa_temp: int = 0, heat_source: int = 0, enable_bits: int = 0) -> bytes:
     """
     Create a command packet to send to the controller.
 
     Args:
         pool_temp: Pool temperature in encoded byte format
         spa_temp: Spa temperature in encoded byte format
+        heat_source: Heat source configuration byte
         enable_bits: Bits indicating which fields are valid
 
     Returns:
@@ -191,7 +192,7 @@ def create_command_packet(pool_temp: int = 0, spa_temp: int = 0, enable_bits: in
     header = [
         *SYNC, DEST, SRC, OPCODE, INFO_LEN,
         0x00, 0x00,          # minutes, hours
-        0x00, 0x00, 0x00,    # primary, secondary, heat-source
+        0x00, 0x00, heat_source,  # primary, secondary, heat-source
         pool_temp,
         spa_temp,
         0x00,                # switch state
