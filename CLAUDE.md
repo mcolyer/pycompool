@@ -38,6 +38,9 @@ uv sync --extra dev
 # Install pre-commit hooks (recommended)
 uv run pre-commit install
 
+# Run full quality checks (like CI)
+uv run pytest && uv run ruff check && uv run mypy src/pycompool
+
 # Run tests
 uv run pytest
 
@@ -65,14 +68,34 @@ COMPOOL_PORT=socket://192.168.0.50:8899 uv run compoolctl set-pool 90f
 
 # Build package
 uv build
+
+# Create and test release
+git tag -a v0.1.1 -m "Release v0.1.1"
+git push origin v0.1.1
 ```
 
 ## CI/CD
 
 GitHub Actions workflows:
 - **CI**: Linting, testing across Python 3.9-3.13, package building
-- **Release**: Automatic PyPI publishing on version tags
+- **Release**: Automatic PyPI publishing on version tags using trusted publishing
 - **Path filtering**: Only runs on code changes (ignores README/docs changes)
+
+### Release Process
+
+1. Update version in `pyproject.toml` and `src/pycompool/__init__.py`
+2. Update `CHANGELOG.md` with new version entry
+3. Create and push version tag: `git tag -a v0.1.1 -m "Release message"`
+4. GitHub Actions will automatically build and publish to PyPI
+
+### Common Issues
+
+- **MyPy type errors**: Ensure all functions have return type annotations
+  - Use `Generator[ReturnType, None, None]` from `collections.abc` for generators
+  - Use `Any` from `typing` for signal handler frame parameters
+  - Handle `Optional[str]` returns from `os.getenv()` properly
+- **Import organization**: Ruff will auto-fix import sorting with `--fix`
+- **Pre-commit hooks**: Run `uv run pre-commit install` after cloning
 
 ## Environment Variables
 
