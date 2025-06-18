@@ -81,7 +81,7 @@ git push origin v0.1.1
 GitHub Actions workflows:
 - **CI**: Linting, testing across Python 3.9-3.13, package building
 - **Release**: Automatic PyPI publishing on version tags using trusted publishing
-- **Path filtering**: Only runs on code changes (ignores README/docs changes)
+- **Path filtering**: Only runs on code changes, skips documentation-only changes (*.md, docs/, LICENSE, .gitignore)
 
 ### Development Workflow
 
