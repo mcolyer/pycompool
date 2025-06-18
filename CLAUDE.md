@@ -35,6 +35,9 @@ This is a Python library with a CLI interface for controlling pool systems via R
 # Install dependencies (uses uv package manager)
 uv sync --extra dev
 
+# Install pre-commit hooks (recommended)
+uv run pre-commit install
+
 # Run tests
 uv run pytest
 
@@ -47,6 +50,9 @@ uv run ruff check
 # Auto-fix linting issues  
 uv run ruff check --fix
 
+# Format code
+uv run ruff format
+
 # Type checking
 uv run mypy src/pycompool
 
@@ -56,7 +62,17 @@ uv run compoolctl monitor
 
 # Test with different serial configurations
 COMPOOL_PORT=socket://192.168.0.50:8899 uv run compoolctl set-pool 90f
+
+# Build package
+uv build
 ```
+
+## CI/CD
+
+GitHub Actions workflows:
+- **CI**: Linting, testing across Python 3.9-3.13, package building
+- **Release**: Automatic PyPI publishing on version tags
+- **Path filtering**: Only runs on code changes (ignores README/docs changes)
 
 ## Environment Variables
 
