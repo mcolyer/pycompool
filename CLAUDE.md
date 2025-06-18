@@ -8,32 +8,54 @@ This is a Python package for controlling Pentair/Compool LX3xxx pool and spa sys
 
 ## Architecture
 
-- **compoolctl**: Main CLI executable script that uses Fire for command parsing
-- **RS-485 Protocol**: Custom binary protocol implementation for Compool communication  
-- **Serial Communication**: Uses PySerial with RS485Settings for hardware control
+This is a Python library with a CLI interface for controlling pool systems via RS-485.
 
-### Key Components
+### Package Structure
 
-- `Packet` dataclass: Constructs binary protocol packets with temperature and enable bits
-- `Session` dataclass: Manages serial connection and ACK handling
-- `CLI` class: Fire-based command interface with `set_pool()` and `set_spa()` methods
-- Protocol constants and helper functions for temperature conversion
+- **src/pycompool/**: Main library package
+  - `protocol.py`: Protocol constants, packet parsing, temperature conversions
+  - `connection.py`: Serial connection management with context managers
+  - `controller.py`: High-level `PoolController` class API
+  - `commands.py`: Command implementations for CLI
+  - `monitor.py`: Real-time monitoring with `PoolMonitor` class
+  - `cli.py`: Fire-based CLI interface
+- **tests/**: Comprehensive test suite with mocks
+- **docs/**: Protocol documentation
+
+### Key Classes
+
+- `PoolController`: Main API for setting temperatures
+- `PoolMonitor`: Real-time heartbeat packet monitoring
+- `SerialConnection`: Connection management with RS-485 support
+- `CLI`: Fire-based command-line interface
 
 ## Development Commands
 
 ```bash
 # Install dependencies (uses uv package manager)
-uv sync
+uv sync --extra dev
 
-# Run compoolctl directly
-./compoolctl set-pool 90f
-./compoolctl set-spa 25c
+# Run tests
+uv run pytest
 
-# Or install and run as a package
-uv run compoolctl set-pool 90f
+# Run tests with coverage
+uv run pytest --cov=src/pycompool --cov-report=term-missing
+
+# Run linter
+uv run ruff check
+
+# Auto-fix linting issues  
+uv run ruff check --fix
+
+# Type checking
+uv run mypy src/pycompool
+
+# Run CLI
+uv run compoolctl set-pool 80f
+uv run compoolctl monitor
 
 # Test with different serial configurations
-COMPOOL_PORT=socket://192.168.0.50:8899 ./compoolctl set-pool 90f
+COMPOOL_PORT=socket://192.168.0.50:8899 uv run compoolctl set-pool 90f
 ```
 
 ## Environment Variables
