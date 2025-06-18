@@ -16,7 +16,7 @@ compoolctl set-spa 25c --baud 19200  # CLI flag overrides env
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-import sys, time, struct, re, os
+import sys, time, struct, re, os, signal
 from serial import serial_for_url
 from serial.rs485 import RS485Settings
 import fire
@@ -30,6 +30,11 @@ ACK_PREFIX    = b"\xFF\xAA\x01"
 ACK_OPCODE    = 0x01
 ACK_TYPE_OK   = 0x82
 BAUD_DEFAULT  = 9600
+
+# Heartbeat/acknowledge packet constants
+HEARTBEAT_DEST = 0x0F
+HEARTBEAT_OPCODE = 0x02
+HEARTBEAT_LEN = 0x10  # 16 bytes of data + header = 24 bytes total
 
 # ─────────────────── helpers ─────────────────────────────────────────────
 def tempstr_to_celsius(s: str) -> float:
@@ -61,6 +66,67 @@ def wait_ack(ser, timeout: float) -> bool:
             _, _, _, _, op, _, acked, *_ = buf[idx:idx+9]
             return op == ACK_OPCODE and acked == ACK_TYPE_OK
     return False
+
+def parse_heartbeat_packet(data: bytes) -> dict | None:
+    """Parse a heartbeat/acknowledge packet from the pool controller."""
+    if len(data) < 24:
+        return None
+    
+    if data[:2] != SYNC:
+        return None
+    
+    # Check if this is a heartbeat packet
+    dest, version, opcode, info_len = struct.unpack('BBBB', data[2:6])
+    if dest != HEARTBEAT_DEST or opcode != HEARTBEAT_OPCODE:
+        return None
+    
+    # Verify checksum
+    payload = data[:-2]
+    expected_csum = sum(payload) & 0xFFFF
+    actual_csum = (data[-2] << 8) | data[-1]
+    
+    if expected_csum != actual_csum:
+        return None
+    
+    # Parse heartbeat packet fields (24 bytes total)
+    minutes, hours = data[6], data[7]
+    primary_equip = data[8]
+    secondary_equip = data[9] 
+    delay_heat_source = data[10]
+    water_temp = data[11]  # Pool water temp in 0.25°C
+    solar_temp = data[12]  # Pool solar temp in 0.5°C
+    spa_water_temp = data[13]  # Spa water temp in 0.25°C (3830 only)
+    spa_solar_temp = data[14]  # Spa solar temp in 0.5°C (3830 only)
+    desired_pool_temp = data[15]  # Desired pool temp in 0.25°C
+    desired_spa_temp = data[16]  # Desired spa temp in 0.25°C
+    air_temp = data[17]  # Air temp in 0.5°C
+    equip_sensor_stat = data[20]
+    product_type_stat = data[21]
+    
+    return {
+        'type': 'heartbeat',
+        'version': version,
+        'time': f'{hours:02d}:{minutes:02d}',
+        'primary_equip': f'0x{primary_equip:02x}',
+        'secondary_equip': f'0x{secondary_equip:02x}',
+        'service_mode': bool(secondary_equip & 0x01),
+        'heater_on': bool(secondary_equip & 0x02),
+        'solar_on': bool(secondary_equip & 0x04),
+        'remotes_enabled': bool(secondary_equip & 0x08),
+        'freeze_mode': bool(secondary_equip & 0x80),
+        'pool_water_temp': water_temp / 4.0 if water_temp else 0,
+        'pool_solar_temp': solar_temp / 2.0 if solar_temp else 0,  
+        'spa_water_temp': spa_water_temp / 4.0 if spa_water_temp else 0,
+        'spa_solar_temp': spa_solar_temp / 2.0 if spa_solar_temp else 0,
+        'desired_pool_temp': desired_pool_temp / 4.0 if desired_pool_temp else 0,
+        'desired_spa_temp': desired_spa_temp / 4.0 if desired_spa_temp else 0,
+        'air_temp': air_temp / 2.0 if air_temp else 0,
+        'pool_water_temp_f': (water_temp / 4.0 * 9/5 + 32) if water_temp else 0,
+        'spa_water_temp_f': (spa_water_temp / 4.0 * 9/5 + 32) if spa_water_temp else 0,
+        'desired_pool_temp_f': (desired_pool_temp / 4.0 * 9/5 + 32) if desired_pool_temp else 0,
+        'desired_spa_temp_f': (desired_spa_temp / 4.0 * 9/5 + 32) if desired_spa_temp else 0,
+        'air_temp_f': (air_temp / 2.0 * 9/5 + 32) if air_temp else 0,
+    }
 
 # ─────────────────── dataclasses ─────────────────────────────────────────
 @dataclass
@@ -133,6 +199,112 @@ class CLI:
                      baud or int(os.getenv("COMPOOL_BAUD", BAUD_DEFAULT)),
                      verbose=verbose).send(pkt)
         print(f"Spa  set-point → {tc*9/5+32:.1f} °F — {'✓ ACK' if ok else '✗ NO ACK'}")
+
+    def monitor(self,
+                port: str | None = None,
+                baud: int | None = None,
+                verbose: bool = False):
+        """
+        Monitor for heartbeat packets from the pool controller. Press Ctrl-C to exit.
+        """
+        session = Session(port or os.getenv("COMPOOL_PORT", "/dev/ttyUSB0"),
+                         baud or int(os.getenv("COMPOOL_BAUD", BAUD_DEFAULT)),
+                         verbose=verbose)
+        
+        # Set up signal handler for graceful exit
+        stop_monitoring = False
+        def signal_handler(signum, frame):
+            nonlocal stop_monitoring
+            print("\n\nStopping monitor...")
+            stop_monitoring = True
+        
+        signal.signal(signal.SIGINT, signal_handler)
+        
+        print(f"Monitoring {session.port} at {session.baud} baud for heartbeat packets...")
+        print("Press Ctrl-C to exit\n")
+        
+        try:
+            with open_serial(session.port, session.baud) as ser:
+                # Set longer timeout for monitoring
+                ser.timeout = 1.0
+                buf = bytearray()
+                last_activity = time.time()
+                
+                while not stop_monitoring:
+                    chunk = ser.read(64)
+                    if chunk:
+                        if verbose:
+                            print(f"Received {len(chunk)} bytes: {chunk.hex(' ')}")
+                        buf.extend(chunk)
+                        last_activity = time.time()
+                        
+                        # Look for sync pattern and try to parse heartbeat packets
+                        while True:
+                            idx = buf.find(SYNC)
+                            if idx == -1:
+                                break
+                                
+                            # Remove any data before sync
+                            if idx > 0:
+                                buf = buf[idx:]
+                                
+                            # Check if we have enough data for a full heartbeat packet (24 bytes)
+                            if len(buf) < 24:
+                                break
+                                
+                            # Try to parse as heartbeat packet
+                            packet_data = bytes(buf[:24])
+                            parsed = parse_heartbeat_packet(packet_data)
+                            
+                            if parsed:
+                                timestamp = time.strftime("%H:%M:%S")
+                                status_flags = []
+                                if parsed['service_mode']:
+                                    status_flags.append("SERVICE")
+                                if parsed['heater_on']:
+                                    status_flags.append("HEAT")
+                                if parsed['solar_on']:
+                                    status_flags.append("SOLAR")
+                                if parsed['freeze_mode']:
+                                    status_flags.append("FREEZE")
+                                
+                                status = f" [{'/'.join(status_flags)}]" if status_flags else ""
+                                
+                                print(f"[{timestamp}] Pool: {parsed['pool_water_temp_f']:.1f}°F/{parsed['desired_pool_temp_f']:.1f}°F  "
+                                      f"Spa: {parsed['spa_water_temp_f']:.1f}°F/{parsed['desired_spa_temp_f']:.1f}°F  "
+                                      f"Air: {parsed['air_temp_f']:.1f}°F  "
+                                      f"Time: {parsed['time']}{status}")
+                                
+                                if verbose:
+                                    print(f"          Raw: {packet_data.hex(' ')}")
+                                    print(f"          Version: {parsed['version']} "
+                                          f"Primary: {parsed['primary_equip']} "
+                                          f"Secondary: {parsed['secondary_equip']}")
+                                    print(f"          Pool Solar: {parsed['pool_solar_temp']:.1f}°C "
+                                          f"Spa Solar: {parsed['spa_solar_temp']:.1f}°C")
+                            else:
+                                if verbose:
+                                    print(f"Failed to parse heartbeat packet: {packet_data.hex(' ')}")
+                            
+                            # Remove processed packet (24 bytes for heartbeat)
+                            buf = buf[24:]
+                    
+                    # Show periodic status if no data received
+                    else:
+                        now = time.time()
+                        if now - last_activity > 10:  # 10 seconds without data
+                            print(f"[{time.strftime('%H:%M:%S')}] Waiting for packets...")
+                            last_activity = now
+                    
+                    # Prevent buffer from growing too large
+                    if len(buf) > 1000:
+                        buf = buf[-100:]
+                        
+        except Exception as e:
+            if not stop_monitoring:
+                sys.exit(f"I/O error: {e}")
+        
+        print("Monitor stopped.")
 
 # ─────────────────── entry-point ─────────────────────────────────────────
 def main():
