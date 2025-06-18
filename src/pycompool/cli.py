@@ -9,7 +9,7 @@ from typing import Optional
 
 import fire
 
-from .commands import set_pool_command, set_spa_command
+from .commands import set_heater_command, set_pool_command, set_spa_command
 from .monitor import monitor_command
 
 
@@ -59,6 +59,31 @@ class CLI:
             compoolctl set-spa 40c --verbose
         """
         set_spa_command(temp, port, baud, verbose)
+
+    def set_heater(
+        self,
+        mode: str,
+        target: str,
+        port: Optional[str] = None,
+        baud: Optional[int] = None,
+        verbose: bool = False
+    ) -> None:
+        """
+        Set heater/solar mode for pool or spa.
+
+        Args:
+            mode: Heating mode ('off', 'heater', 'solar-priority', 'solar-only')
+            target: Target system ('pool' or 'spa')
+            port: Serial port override
+            baud: Baud rate override
+            verbose: Enable verbose output
+
+        Examples:
+            compoolctl set-heater heater pool
+            compoolctl set-heater solar-only spa
+            compoolctl set-heater off pool --verbose
+        """
+        set_heater_command(mode, target, port, baud, verbose)
 
     def monitor(
         self,

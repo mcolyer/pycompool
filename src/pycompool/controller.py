@@ -106,6 +106,65 @@ class PoolController:
 
         return success
 
+    def set_heater_mode(self, mode: str, target: str, verbose: bool = False) -> bool:
+        """
+        Set the heater/solar mode for pool or spa.
+
+        Args:
+            mode: Heating mode ('off', 'heater', 'solar-priority', 'solar-only')
+            target: Target system ('pool' or 'spa')
+            verbose: Enable verbose output
+
+        Returns:
+            True if command was acknowledged, False otherwise
+
+        Example:
+            >>> controller = PoolController()
+            >>> controller.set_heater_mode('heater', 'pool')
+            True
+        """
+        # Validate inputs
+        valid_modes = {'off', 'heater', 'solar-priority', 'solar-only'}
+        valid_targets = {'pool', 'spa'}
+
+        if mode not in valid_modes:
+            raise ValueError(f"Invalid mode '{mode}'. Must be one of: {', '.join(valid_modes)}")
+        if target not in valid_targets:
+            raise ValueError(f"Invalid target '{target}'. Must be one of: {', '.join(valid_targets)}")
+
+        # Map mode to bits
+        mode_bits = {
+            'off': 0b00,
+            'heater': 0b01,
+            'solar-priority': 0b10,
+            'solar-only': 0b11
+        }
+
+        # Calculate heat source byte
+        # Pool uses bits 4-5, Spa uses bits 6-7
+        heat_source = 0
+        if target == 'pool':
+            heat_source = mode_bits[mode] << 4  # Bits 4-5
+        else:  # spa
+            heat_source = mode_bits[mode] << 6  # Bits 6-7
+
+        enable_bits = 1 << 4  # Enable heat source field (bit 4)
+
+        packet = create_command_packet(
+            heat_source=heat_source,
+            enable_bits=enable_bits
+        )
+
+        if verbose:
+            print(f"→ {packet.hex(' ')}")
+
+        success = self.connection.send_packet(packet)
+
+        print(f"{target.capitalize()} heating → {mode} — "
+              f"{'✓ ACK' if success else '✗ NO ACK'}")
+
+        return success
+
     @property
     def port(self) -> str:
         """Get the configured serial port."""

@@ -52,3 +52,27 @@ def set_spa_command(
     """
     controller = PoolController(port, baud)
     return controller.set_spa_temperature(temperature, verbose)
+
+
+def set_heater_command(
+    mode: str,
+    target: str,
+    port: Optional[str] = None,
+    baud: Optional[int] = None,
+    verbose: bool = False
+) -> bool:
+    """
+    Command function for setting heater/solar mode.
+
+    Args:
+        mode: Heating mode ('off', 'heater', 'solar-priority', 'solar-only')
+        target: Target system ('pool' or 'spa')
+        port: Serial port override
+        baud: Baud rate override
+        verbose: Enable verbose output
+
+    Returns:
+        True if successful, False otherwise
+    """
+    controller = PoolController(port, baud)
+    return controller.set_heater_mode(mode, target, verbose)
