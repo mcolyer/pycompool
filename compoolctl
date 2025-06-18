@@ -135,5 +135,8 @@ class CLI:
         print(f"Spa  set-point → {tc*9/5+32:.1f} °F — {'✓ ACK' if ok else '✗ NO ACK'}")
 
 # ─────────────────── entry-point ─────────────────────────────────────────
-if __name__ == "__main__":
+def main():
     fire.Fire(CLI)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,195 @@
+--------------------------------------------------------------------------
+Programming & Calibration
+--------------------------------------------------------------------------
+
+Pressing the P(rogram) button on the Compool wall controller enters
+Programming mode,
+so that equipment timers can be set, and various configuration values
+modified, as described
+in the Programming & Calibration sections of the Compool manual.
+
+Unlike the above Basic Command packet's "Byte Use enable", this part of
+the protocol always
+writes several values at once, therefore the data is first read from the
+LX3xxx Unit, the
+relevant parts modified, and all the data written back.
+
+The controller sends 10 packets of the following formats as soon as the
+Program button is
+pressed, where X ranges from 1 to 10 (0xAh), to get all the current
+values from the LX3xxx Unit,
+however individual packets can be used if need be (especially useful for
+temperature calibration).
+
+Programming Data Packet Request (X=1 to 9):
+............................................................
+Byte 0    SYNC BYTE 0         0xFFh (always)
+Byte 1    SYNC BYTE 1         0xAAh (always)
+Byte 2    Destination Address 0x00h (always)
+Byte 3    Source Address      0x01h (see definitions)
+Byte 4    OpCode              0xAXh (always)
+Byte 5    Info Field Length   0x01h (always)
+Byte 6    Data                0x1Xh (always) X matches X in Byte 4
+Byte 7    Hi Byte of Checksum 0x??h (see definitions)
+Byte 8    Lo Byte of Checksum 0x??h (see definitions)
+
+The LX3xxx Unit responds to each Programming Data Packet Request with a
+corresponding data packet
+
+Programming Data Packet (X=1 to 8):
+..................................................
+Byte 0    SYNC BYTE 0         0xFFh (always)
+Byte 1    SYNC BYTE 1         0xAAh (always)
+Byte 2    Destination Address 0x01h (always)
+Byte 3    LX3xxx Version      0x??h (see definitions)
+Byte 4    OpCode              0x1Xh (always, matched Request Data value)
+Byte 5    Info Field Length   0x10h (always)
+Byte 6    Program 1 Start Hours
+Byte 7    Program 1 Start Minutes
+Byte 8    Program 1 Duration Hours
+Byte 9    Program 1 Duration Minutes
+Byte 10   Program 2 Start Hours
+Byte 11   Program 2 Start Minutes
+Byte 12   Program 2 Duration Hours
+Byte 13   Program 2 Duration Minutes
+Byte 14   Program 3 Start Hours
+Byte 15   Program 3 Start Minutes
+Byte 16   Program 3 Duration Hours
+Byte 17   Program 3 Duration Minutes
+Byte 18   Program 4 Start Hours
+Byte 19   Program 4 Start Minutes
+Byte 20   Program 4 Duration Hours
+Byte 21   Program 4 Duration Minutes
+Byte 22   Hi Byte of Checksum 0x??h (see definitions)
+Byte 23   Lo Byte of Checksum 0x??h (see definitions)
+
+Packets with these 8 opcodes are the start & duration timers for each of
+the equipment keys,
+in four groups of four bytes, as detailed in the Programming section of
+the Compool manual.
+If all the counters have been cleared these will all be 0xFFh
+
+So for example sending the packet with opcode 0xA1 from the controller
+to the LX3xxx Unit will
+request the programming for the Spa. The LX3xxx Unit will respond with a
+packet with opcode 0x11
+containing the 16 bytes representing the 4 values for each of the 4
+timers as above. Opcode 0xA2
+will do the same for the Pool, and will receive an opcode 0x12 response,
+opcode 0xA3 for Equipment
+Key 1 and so on up to opcode 0xA8 for the timers for equipment key 6,
+which will get an opcode 0x18
+data packet in response.
+
+Calibration Data Packet (Opcode 0x19):
+..................................................
+Byte 0    SYNC BYTE 0         0xFFh (always)
+Byte 1    SYNC BYTE 1         0xAAh (always)
+Byte 2    Destination Address 0x01h (always)
+Byte 3    LX3xxx Version      0x??h (see definitions)
+Byte 4    OpCode              0x19h (always, matched Request Data value)
+Byte 5    Info Field Length   0x10h (always)
+Byte 6    Days between backwash
+Byte 7    ?? (reads 0x0Ch)
+Byte 8    Minutes of backwash
+Byte 9    ?? (reads 0x00)
+Byte 10 - 21  ??              0xFFh
+Byte 22   Hi Byte of Checksum 0x??h (see definitions)
+Byte 23   Lo Byte of Checksum 0x??h (see definitions)
+
+This packet is in response to Programming Data Packet Read Request with
+X = 9.
+It accesses some of the calibration data that can accessed from the wall
+controller when the
+Spa Heat Source key is pressed in Programming mode.
+
+Calibration Data Packet (Opcode 0x1A):
+..................................................
+Byte 0    SYNC BYTE 0         0xFFh (always)
+Byte 1    SYNC BYTE 1         0xAAh (always)
+Byte 2    Destination Address 0x01h (always)
+Byte 3    LX3xxx Version      0x??h (see definitions)
+Byte 4    OpCode              0x1Ah (always)
+Byte 5    Info Field Length   0x08h (always)
+Byte 6    Water temp calibration offset * 4
+Byte 7    Solar temp calibration offset * 4
+Byte 8    ?? (perhaps CP3830 Spa temp calibration offset)
+Byte 9    ?? (perhaps CP3830 Spa Solar temp calibration offset)
+Byte 10   ??
+Byte 11   ??
+Byte 12   Air temp calibration offset * 2
+Byte 13   Floor cleaner valve cycle time
+Byte 14   Hi Byte of Checksum 0x??h (see definitions)
+Byte 15   Lo Byte of Checksum 0x??h (see definitions)
+
+This packet is in response to Programming Data Packet Request with X = 10.
+It accesses the rest of the calibration data that can accessed from the
+wall controller when the
+Spa Heat Source key is pressed in Programming mode.
+
+
+
+
+To Update the programming or calibration data, the wall controller sends
+back data to the
+LX3xxx Unit in the same format as received in the data packets but with
+the following packet types
+
+Write Programming Data Packet (X=1 to 9):
+..................................................
+Byte 0    SYNC BYTE 0         0xFFh (always)
+Byte 1    SYNC BYTE 1         0xAAh (always)
+Byte 2    Destination Address 0x00h (always)
+Byte 3    Source Address      0x01h (see definitions)
+Byte 4    OpCode              0x9Xh (always)
+Byte 5    Info Field Length   0x10h (always)
+Byte 6-21 Data                0x??h (see definitions)
+Byte 22   Hi Byte of Checksum 0x??h (see definitions)
+Byte 23   Lo Byte of Checksum 0x??h (see definitions)
+
+Write Calibration Data Packet (X=10):
+..................................................
+Byte 0    SYNC BYTE 0         0xFFh (always)
+Byte 1    SYNC BYTE 1         0xAAh (always)
+Byte 2    Destination Address 0x00h (always)
+Byte 3    Source Address      0x01h (see definitions)
+Byte 4    OpCode              0x9Ah (always)
+Byte 5    Info Field Length   0x08h (always)
+Byte 6    Water temp calibration offset * 4
+Byte 7    Solar temp calibration offset * 4
+Byte 8    ?? (perhaps CP3830 Spa temp calibration offset)
+Byte 9    ?? (perhaps CP3830 Spa Solar temp calibration offset)
+Byte 10   ??
+Byte 11   ??
+Byte 12   Air temp calibration offset * 2
+Byte 13   Floor cleaner valve cycle time Byte 14   Hi Byte of Checksum
+0x??h (see definitions)
+Byte 15   Lo Byte of Checksum 0x??h (see definitions)
+
+The temperature calibration offsets are relative and negative, so
+_increasing_ the Water or Solar temp
+calibration value by 4 will _decrease_ the reported temperature from the
+LX3xxx Unit by 1 degree,
+similarly decreasing the Air temp calibration value by 2 will increase
+the LX3xxx Unit reported air
+temperature by 1 degree. So if the water temperature is too hot by say 2
+degrees, read the Water temp
+calibration offset, decrement the value by 8, and write it back.
+
+The LX3xxx Unit responds to these Data packets with an ACK packet (which
+exposes that the data in a
+normal command's ACK packet, 0x82, is actually the Opcode of the
+standard command packet being ACKed)
+
+Calibration Data Acknowledge Packet:
+..................................................
+Byte 0    SYNC BYTE 0         0xFFh (always)
+Byte 1    SYNC BYTE 1         0xAAh (always)
+Byte 2    Destination Address 0x01h (always)
+Byte 3    LX3xxx Version      0x??h (see definitions)
+Byte 4    OpCode              0x01h (always)
+Byte 5    Info Field Length   0x01h (always)
+Byte 6    Data                0x9Xh Matches the Opcode of the Data
+packet being ACKed (0x91h - 0x9Ah)
+Byte 7    Hi Byte of Checksum 0x??h (see definitions)
+Byte 8    Lo Byte of Checksum 0x??h (see definitions)

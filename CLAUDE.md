@@ -9,8 +9,7 @@ This is a Python package for controlling Pentair/Compool LX3xxx pool and spa sys
 ## Architecture
 
 - **compoolctl**: Main CLI executable script that uses Fire for command parsing
-- **main.py**: Simple entry point (currently just prints hello message)
-- **RS-485 Protocol**: Custom binary protocol implementation for Compool communication
+- **RS-485 Protocol**: Custom binary protocol implementation for Compool communication  
 - **Serial Communication**: Uses PySerial with RS485Settings for hardware control
 
 ### Key Components
@@ -26,12 +25,12 @@ This is a Python package for controlling Pentair/Compool LX3xxx pool and spa sys
 # Install dependencies (uses uv package manager)
 uv sync
 
-# Run the main module
-python main.py
-
 # Run compoolctl directly
 ./compoolctl set-pool 90f
 ./compoolctl set-spa 25c
+
+# Or install and run as a package
+uv run compoolctl set-pool 90f
 
 # Test with different serial configurations
 COMPOOL_PORT=socket://192.168.0.50:8899 ./compoolctl set-pool 90f

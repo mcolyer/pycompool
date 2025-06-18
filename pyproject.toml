@@ -1,7 +1,7 @@
 [project]
 name = "pycompool"
 version = "0.1.0"
-description = "Add your description here"
+description = "Control Pentair/Compool LX3xxx pool and spa systems via RS-485"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -9,3 +9,6 @@ dependencies = [
     "pyserial>=3.5",
     "serial>=0.0.97",
 ]
+
+[project.scripts]
+compoolctl = "compoolctl:main"
