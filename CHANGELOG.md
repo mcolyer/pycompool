@@ -7,12 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2024-12-18
+
 ### Added
-- Comprehensive GitHub Actions CI/CD workflows
-- Pre-commit configuration for local development
+- Comprehensive CHANGELOG.md with version history
+- MIT LICENSE file for open source compliance
 - CONTRIBUTING.md with development guidelines
-- Comprehensive test coverage (94%)
-- Professional Python package structure
+- Pre-commit configuration for local development
+- Comprehensive GitHub Actions CI/CD workflows with PyPI trusted publishing
+
+### Fixed
+- MyPy type annotation errors in connection.py and monitor.py
+- Import organization and code formatting issues
+- Removed .coverage file from version control
+
+### Changed
+- Updated release workflow to use PyPI trusted publishing (more secure)
+- Enhanced release workflow with full quality checks
+- Updated CLAUDE.md with development best practices and troubleshooting
 
 ## [0.1.0] - 2024-12-18
 
