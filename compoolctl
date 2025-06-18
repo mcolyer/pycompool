@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+"""
+compoolctl  –  Set Pentair / Compool LX3xxx pool or spa set-point.
+
+Environment
+-----------
+COMPOOL_PORT : optional serial device / PySerial URL
+COMPOOL_BAUD : optional baud rate (int)
+
+Examples
+--------
+export COMPOOL_PORT=socket://192.168.0.50:8899
+compoolctl set-pool 90f              # uses env var
+compoolctl set-spa 25c --baud 19200  # CLI flag overrides env
+"""
+
+from __future__ import annotations
+from dataclasses import dataclass, field
+import sys, time, struct, re, os
+from serial import serial_for_url
+from serial.rs485 import RS485Settings
+import fire
+
+# ─────────────────── RS-485 / protocol constants ─────────────────────────
+SYNC          = b"\xFF\xAA"
+DEST, SRC     = 0x00, 0x01
+OPCODE        = 0x82
+INFO_LEN      = 0x09
+ACK_PREFIX    = b"\xFF\xAA\x01"
+ACK_OPCODE    = 0x01
+ACK_TYPE_OK   = 0x82
+BAUD_DEFAULT  = 9600
+
+# ─────────────────── helpers ─────────────────────────────────────────────
+def tempstr_to_celsius(s: str) -> float:
+    m = re.fullmatch(r"(?i)\s*([0-9]+(?:\.[0-9]*)?)\s*([fc])\s*", s)
+    if not m:
+        raise ValueError("temperature must look like 90f or 25c")
+    val, unit = float(m.group(1)), m.group(2).lower()
+    return (val - 32) * 5 / 9 if unit == 'f' else val
+
+def celsius_to_byte(tc: float) -> int:
+    return max(0, min(255, int(round(tc * 4))))
+
+def open_serial(url: str, baud: int):
+    is_socket = url.startswith(("socket://", "rfc2217://"))
+    kw = dict(baudrate=baud, bytesize=8, parity='N',
+              stopbits=1, timeout=0.3)
+    if not is_socket:
+        kw["rs485_mode"] = RS485Settings(rts_level_for_tx=True,
+                                         rts_level_for_rx=False)
+    return serial_for_url(url, **kw)
+
+def wait_ack(ser, timeout: float) -> bool:
+    deadline = time.time() + timeout
+    buf = bytearray()
+    while time.time() < deadline:
+        buf.extend(ser.read(32))
+        idx = buf.find(ACK_PREFIX)
+        if idx != -1 and len(buf) - idx >= 9:
+            _, _, _, _, op, _, acked, *_ = buf[idx:idx+9]
+            return op == ACK_OPCODE and acked == ACK_TYPE_OK
+    return False
+
+# ─────────────────── dataclasses ─────────────────────────────────────────
+@dataclass
+class Packet:
+    pool_byte: int = 0
+    spa_byte:  int = 0
+    enable_bits: int = 0
+
+    def to_bytes(self) -> bytes:
+        hdr = [
+            *SYNC, DEST, SRC, OPCODE, INFO_LEN,
+            0x00, 0x00,          # minutes, hours
+            0x00, 0x00, 0x00,    # primary, secondary, heat-source
+            self.pool_byte,
+            self.spa_byte,
+            0x00,                # switch state
+            self.enable_bits,
+        ]
+        csum = sum(hdr) & 0xFFFF
+        hdr += [(csum >> 8) & 0xFF, csum & 0xFF]
+        return bytes(hdr)
+
+@dataclass
+class Session:
+    port: str = field(default_factory=lambda: os.getenv("COMPOOL_PORT",
+                                                        "/dev/ttyUSB0"))
+    baud: int = field(default_factory=lambda: int(os.getenv("COMPOOL_BAUD",
+                                                            BAUD_DEFAULT)))
+    ack_timeout: float = 2.0
+    verbose: bool = field(default=False, repr=False)
+
+    def send(self, pkt: Packet) -> bool:
+        if self.verbose:
+            print(f"→ {pkt.to_bytes().hex(' ')}")
+        try:
+            with open_serial(self.port, self.baud) as ser:
+                ser.write(pkt.to_bytes())
+                return wait_ack(ser, self.ack_timeout)
+        except Exception as e:
+            sys.exit(f"I/O error: {e}")
+
+# ─────────────────── CLI façade (Fire) ──────────────────────────────────
+class CLI:
+    def set_pool(self, temp: str,
+                 port: str | None = None,
+                 baud: int | None = None,
+                 verbose: bool = False):
+        """
+        Set desired **pool** temperature.  <temp> must end in 'f' or 'c'.
+        """
+        tc = tempstr_to_celsius(temp)
+        pkt = Packet(pool_byte=celsius_to_byte(tc),
+                     enable_bits=1 << 5)
+        ok = Session(port or os.getenv("COMPOOL_PORT", "/dev/ttyUSB0"),
+                     baud or int(os.getenv("COMPOOL_BAUD", BAUD_DEFAULT)),
+                     verbose=verbose).send(pkt)
+        print(f"Pool set-point → {tc*9/5+32:.1f} °F — {'✓ ACK' if ok else '✗ NO ACK'}")
+
+    def set_spa(self, temp: str,
+                port: str | None = None,
+                baud: int | None = None,
+                verbose: bool = False):
+        """
+        Set desired **spa** temperature.  <temp> must end in 'f' or 'c'.
+        """
+        tc = tempstr_to_celsius(temp)
+        pkt = Packet(spa_byte=celsius_to_byte(tc),
+                     enable_bits=1 << 6)
+        ok = Session(port or os.getenv("COMPOOL_PORT", "/dev/ttyUSB0"),
+                     baud or int(os.getenv("COMPOOL_BAUD", BAUD_DEFAULT)),
+                     verbose=verbose).send(pkt)
+        print(f"Spa  set-point → {tc*9/5+32:.1f} °F — {'✓ ACK' if ok else '✗ NO ACK'}")
+
+# ─────────────────── entry-point ─────────────────────────────────────────
+if __name__ == "__main__":
+    fire.Fire(CLI)
