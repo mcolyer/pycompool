@@ -49,8 +49,8 @@ class TestPoolMonitor:
         monitor = PoolMonitor()
         monitor.start()
 
-        # Verify read_packets was called
-        mock_connection.read_packets.assert_called_once_with(packet_size=24)
+        # Verify read_packets was called with extended timeout
+        mock_connection.read_packets.assert_called_once_with(packet_size=24, timeout=30.0)
 
     def create_test_heartbeat_data(self):
         """Create test heartbeat packet data."""
