@@ -9,7 +9,8 @@ This tool provides a command-line interface to interact with Pentair Compool LX3
 ## Features
 
 - **Set pool temperature** - Control desired pool water temperature
-- **Set spa temperature** - Control desired spa water temperature  
+- **Set spa temperature** - Control desired spa water temperature
+- **Control heater modes** - Set heating modes (off, heater, solar-priority, solar-only) for pool and spa
 - **Monitor system status** - Real-time monitoring of temperatures, equipment status, and controller time
 - **Multiple connection types** - Support for serial ports and network connections
 - **Environment configuration** - Configurable via environment variables
@@ -53,6 +54,22 @@ compoolctl set-spa 104f
 compoolctl set-spa 40c
 ```
 
+### Control Heater Modes
+
+```bash
+# Turn on pool heater
+compoolctl set-heater heater pool
+
+# Set spa to solar heating only
+compoolctl set-heater solar-only spa
+
+# Set pool to solar priority (heater backup)
+compoolctl set-heater solar-priority pool
+
+# Turn off all heating for pool
+compoolctl set-heater off pool
+```
+
 ### Monitor System Status
 
 ```bash
@@ -75,6 +92,10 @@ from pycompool.monitor import PoolMonitor
 controller = PoolController("/dev/ttyUSB0", 9600)
 controller.set_pool_temperature("80f")
 controller.set_spa_temperature("104f")
+
+# Control heater modes
+controller.set_heater_mode("heater", "pool")
+controller.set_heater_mode("solar-only", "spa")
 
 # Monitor heartbeats
 monitor = PoolMonitor("/dev/ttyUSB0", 9600)

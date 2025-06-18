@@ -24,7 +24,7 @@ This is a Python library with a CLI interface for controlling pool systems via R
 
 ### Key Classes
 
-- `PoolController`: Main API for setting temperatures
+- `PoolController`: Main API for setting temperatures and heater modes
 - `PoolMonitor`: Real-time heartbeat packet monitoring
 - `SerialConnection`: Connection management with RS-485 support
 - `CLI`: Fire-based command-line interface
@@ -61,10 +61,12 @@ uv run mypy src/pycompool
 
 # Run CLI
 uv run compoolctl set-pool 80f
+uv run compoolctl set-heater heater pool
 uv run compoolctl monitor
 
 # Test with different serial configurations
 COMPOOL_PORT=socket://192.168.0.50:8899 uv run compoolctl set-pool 90f
+COMPOOL_PORT=socket://192.168.0.50:8899 uv run compoolctl set-heater solar-only spa
 
 # Build package
 uv build
@@ -110,3 +112,24 @@ The RS-485 protocol uses:
 - ACK responses with 2-second timeout
 - Temperature encoded as celsius * 4 (0-255 range)
 - Enable bits control which setpoint is being modified (bit 5 for pool, bit 6 for spa)
+- Heat source control using bits 4-7 (bit 4 enables, bits 4-5 for pool, bits 6-7 for spa)
+
+## Monitoring and Connection Issues
+
+### Packet Buffering
+When using network-based serial connections (socket://), packets may be buffered and delivered in bursts rather than real-time. To minimize this:
+- The monitor reads 24-byte chunks (matching packet size)
+- Extended timeout (30s) prevents premature disconnection
+- Consider implementing packet deduplication for repeated identical packets
+
+### Network Serial Bridges
+Serial-to-network bridges may introduce latency and buffering:
+- Test with different timeout values if packets arrive in bursts
+- Check bridge settings for real-time mode or reduced buffering
+- Monitor verbose output shows exact packet timing and content
+
+### Common Debugging
+- Use `--verbose` flag to see raw packet data and timing
+- Check that heartbeat packets arrive every ~2.5 seconds as expected
+- Verify packet structure starts with sync bytes `FF AA`
+- Monitor for connection drops vs. controller stopping transmission
