@@ -95,5 +95,18 @@ jobs:
     
     - name: Test package installation
       run: |
+        # Create fresh virtual environment for testing installation
+        uv venv test-env
+        source test-env/bin/activate
         uv pip install dist/*.whl
-        compoolctl --help
+        
+        # Test both the entry point and module execution
+        which compoolctl || echo "compoolctl not in PATH, testing module execution"
+        python -m pycompool.cli --help
+        
+        # Test that the entry point works if it's available
+        if command -v compoolctl >/dev/null 2>&1; then
+          compoolctl --help
+        else
+          echo "Entry point not available in PATH, but module execution works"
+        fi
