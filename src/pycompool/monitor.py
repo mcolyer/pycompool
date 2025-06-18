@@ -8,7 +8,7 @@ status from pool controllers via heartbeat packets.
 import signal
 import sys
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from .connection import ConnectionError, SerialConnection
 from .protocol import parse_heartbeat_packet
@@ -43,7 +43,7 @@ class PoolMonitor:
         Monitors until Ctrl-C is pressed or an error occurs.
         """
         # Set up signal handler for graceful exit
-        def signal_handler(signum, frame):
+        def signal_handler(signum: int, frame: Any) -> None:
             print("\n\nStopping monitor...")
             self._stop_monitoring = True
 

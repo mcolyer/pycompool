@@ -7,9 +7,11 @@ and network-based serial connections.
 
 import os
 import time
+from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Optional
 
+import serial
 from serial import serial_for_url
 from serial.rs485 import RS485Settings
 
@@ -37,11 +39,11 @@ class SerialConnection:
             port: Serial port or URL (defaults to COMPOOL_PORT env var)
             baud: Baud rate (defaults to COMPOOL_BAUD env var)
         """
-        self.port = port or os.getenv("COMPOOL_PORT", "/dev/ttyUSB0")
+        self.port = port if port is not None else os.getenv("COMPOOL_PORT", "/dev/ttyUSB0")
         self.baud = baud or int(os.getenv("COMPOOL_BAUD", str(BAUD_DEFAULT)))
 
     @contextmanager
-    def open(self):
+    def open(self) -> Generator[serial.Serial, None, None]:
         """
         Context manager for opening serial connection.
 
@@ -60,7 +62,7 @@ class SerialConnection:
             if 'conn' in locals():
                 conn.close()
 
-    def _create_connection(self):
+    def _create_connection(self) -> serial.Serial:
         """Create and configure serial connection."""
         is_socket = self.port.startswith(("socket://", "rfc2217://"))
 
@@ -102,7 +104,7 @@ class SerialConnection:
         except Exception as e:
             raise ConnectionError(f"Failed to send packet: {e}") from e
 
-    def _wait_for_ack(self, conn, timeout: float) -> bool:
+    def _wait_for_ack(self, conn: serial.Serial, timeout: float) -> bool:
         """Wait for ACK packet response."""
         deadline = time.time() + timeout
         buf = bytearray()
@@ -121,7 +123,7 @@ class SerialConnection:
 
         return False
 
-    def read_packets(self, packet_size: int = 24, timeout: float = 1.0):
+    def read_packets(self, packet_size: int = 24, timeout: float = 1.0) -> Generator[bytes, None, None]:
         """
         Generator that yields packets as they are received.
 
