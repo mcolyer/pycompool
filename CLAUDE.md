@@ -81,7 +81,39 @@ git push origin v0.1.1
 GitHub Actions workflows:
 - **CI**: Linting, testing across Python 3.9-3.13, package building
 - **Release**: Automatic PyPI publishing on version tags using trusted publishing
-- **Path filtering**: Only runs on code changes (ignores README/docs changes)
+- **Path filtering**: Only runs on code changes, skips documentation-only changes (*.md, docs/, LICENSE, .gitignore)
+
+### Development Workflow
+
+When developing new features:
+
+1. **Create a feature branch**: Use descriptive names like `add-feature-name` or `fix-issue-description`
+   ```bash
+   git checkout -b add-new-feature
+   ```
+
+2. **Implement the feature**: Write code following existing patterns and conventions
+
+3. **Update documentation**:
+   - Add entry to `CHANGELOG.md` under the `[Unreleased]` section
+   - Update `README.md` if the feature affects user-facing functionality
+   - Update docstrings and code comments as needed
+
+4. **Run quality checks**: Ensure all tests pass and code meets standards
+   ```bash
+   uv run pytest && uv run ruff check && uv run mypy src/pycompool
+   ```
+
+5. **Commit and push**: Use descriptive commit messages
+   ```bash
+   git add .
+   git commit -m "Add feature description with details"
+   git push -u origin add-new-feature
+   ```
+
+6. **Create pull request**: Include summary of changes and test coverage
+
+**IMPORTANT**: Always update `CHANGELOG.md` when adding features, fixing bugs, or making significant changes. This maintains project history and helps with release planning.
 
 ### Release Process
 

@@ -12,6 +12,7 @@ from .protocol import (
     celsius_to_byte,
     celsius_to_fahrenheit,
     create_command_packet,
+    parse_heartbeat_packet,
     tempstr_to_celsius,
 )
 
@@ -164,6 +165,29 @@ class PoolController:
               f"{'✓ ACK' if success else '✗ NO ACK'}")
 
         return success
+
+    def get_status(self, timeout: float = 10.0) -> Optional[dict]:
+        """
+        Listen for a single heartbeat packet and return the parsed status data.
+
+        Args:
+            timeout: Maximum time to wait for a heartbeat packet in seconds
+
+        Returns:
+            Dictionary containing parsed heartbeat data, or None if no packet received
+
+        Example:
+            >>> controller = PoolController()
+            >>> status = controller.get_status()
+            >>> if status:
+            ...     print(f"Pool temp: {status['pool_water_temp_f']:.1f}°F")
+        """
+        for packet_data in self.connection.read_packets(packet_size=24, timeout=timeout):
+            parsed = parse_heartbeat_packet(packet_data)
+            if parsed:
+                return parsed
+
+        return None
 
     @property
     def port(self) -> str:

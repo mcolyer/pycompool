@@ -9,6 +9,11 @@ on:
       - 'pyproject.toml'
       - 'uv.lock'
       - '.github/workflows/**'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
   pull_request:
     branches: [ main ]
     paths:
@@ -17,6 +22,11 @@ on:
       - 'pyproject.toml'
       - 'uv.lock'
       - '.github/workflows/**'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
 
 jobs:
   lint:

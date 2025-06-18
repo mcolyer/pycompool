@@ -5,6 +5,12 @@ from unittest.mock import Mock, patch
 import pytest
 
 from pycompool.controller import PoolController
+from pycompool.protocol import (
+    HEARTBEAT_DEST,
+    HEARTBEAT_OPCODE,
+    SYNC,
+    calculate_checksum,
+)
 
 
 class TestPoolController:
@@ -291,3 +297,93 @@ class TestPoolController:
         controller = PoolController("/dev/ttyUSB1", 19200)
         assert controller.port == "/dev/ttyUSB1"
         assert controller.baud == 19200
+
+    def _create_test_heartbeat(self):
+        """Create a test heartbeat packet."""
+        defaults = {
+            'version': 0x01,
+            'minutes': 0x1E,
+            'hours': 0x0C,
+            'primary_equip': 0x00,
+            'secondary_equip': 0x00,
+            'delay_heat_source': 0x00,
+            'water_temp': 0x50,
+            'solar_temp': 0x50,
+            'spa_water_temp': 0x60,
+            'spa_solar_temp': 0x60,
+            'desired_pool_temp': 0x50,
+            'desired_spa_temp': 0x60,
+            'air_temp': 0x48,
+        }
+
+        packet = bytearray(24)
+        packet[:2] = SYNC
+        packet[2] = HEARTBEAT_DEST
+        packet[3] = defaults['version']
+        packet[4] = HEARTBEAT_OPCODE
+        packet[5] = 0x10  # Info length
+        packet[6] = defaults['minutes']
+        packet[7] = defaults['hours']
+        packet[8] = defaults['primary_equip']
+        packet[9] = defaults['secondary_equip']
+        packet[10] = defaults['delay_heat_source']
+        packet[11] = defaults['water_temp']
+        packet[12] = defaults['solar_temp']
+        packet[13] = defaults['spa_water_temp']
+        packet[14] = defaults['spa_solar_temp']
+        packet[15] = defaults['desired_pool_temp']
+        packet[16] = defaults['desired_spa_temp']
+        packet[17] = defaults['air_temp']
+        packet[18] = 0  # Spare
+        packet[19] = 0  # Spare
+        packet[20] = 0  # Equipment status
+        packet[21] = 0  # Product type
+
+        # Calculate and add checksum
+        checksum = calculate_checksum(packet[:-2])
+        packet[22] = (checksum >> 8) & 0xFF
+        packet[23] = checksum & 0xFF
+
+        return bytes(packet)
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_get_status_success(self, mock_connection_class):
+        """Test successful status retrieval."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+
+        mock_packet = self._create_test_heartbeat()
+        mock_connection.read_packets.return_value = iter([mock_packet])
+
+        controller = PoolController()
+        status = controller.get_status()
+
+        assert status is not None
+        assert 'pool_water_temp_f' in status
+        assert 'spa_water_temp_f' in status
+        mock_connection.read_packets.assert_called_once_with(packet_size=24, timeout=10.0)
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_get_status_no_packet(self, mock_connection_class):
+        """Test status retrieval with no packets received."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.read_packets.return_value = iter([])
+
+        controller = PoolController()
+        status = controller.get_status()
+
+        assert status is None
+        mock_connection.read_packets.assert_called_once_with(packet_size=24, timeout=10.0)
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_get_status_custom_timeout(self, mock_connection_class):
+        """Test status retrieval with custom timeout."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.read_packets.return_value = iter([])
+
+        controller = PoolController()
+        controller.get_status(timeout=5.0)
+
+        mock_connection.read_packets.assert_called_once_with(packet_size=24, timeout=5.0)
