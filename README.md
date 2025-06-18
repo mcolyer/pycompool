@@ -80,6 +80,33 @@ compoolctl monitor
 compoolctl monitor --verbose
 ```
 
+### Get Current Status
+
+You can retrieve the current system status without continuous monitoring:
+
+```python
+from pycompool import PoolController
+
+controller = PoolController()
+status = controller.get_status(timeout=10.0)  # Wait up to 10 seconds
+
+if status:
+    print(f"Pool Temperature: {status['pool_water_temp_f']:.1f}°F (target: {status['desired_pool_temp_f']:.1f}°F)")
+    print(f"Spa Temperature: {status['spa_water_temp_f']:.1f}°F (target: {status['desired_spa_temp_f']:.1f}°F)")
+    print(f"Air Temperature: {status['air_temp_f']:.1f}°F")
+    print(f"Controller Time: {status['time']}")
+    
+    # Check system status flags
+    if status['heater_on']:
+        print("Heater is ON")
+    if status['solar_on']:
+        print("Solar heating is ON")
+    if status['service_mode']:
+        print("System in SERVICE mode")
+else:
+    print("No status received within timeout period")
+```
+
 ### Library Usage
 
 The package can also be used as a Python library:
@@ -96,6 +123,12 @@ controller.set_spa_temperature("104f")
 # Control heater modes
 controller.set_heater_mode("heater", "pool")
 controller.set_heater_mode("solar-only", "spa")
+
+# Get current system status
+status = controller.get_status()
+if status:
+    print(f"Pool: {status['pool_water_temp_f']:.1f}°F")
+    print(f"Spa: {status['spa_water_temp_f']:.1f}°F")
 
 # Monitor heartbeats
 monitor = PoolMonitor("/dev/ttyUSB0", 9600)
