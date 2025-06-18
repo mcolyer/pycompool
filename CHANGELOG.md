@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2025-01-18
+
 ### Added
 - Heater control command `set-heater` for controlling heating modes
 - Support for four heating modes: off, heater, solar-priority, solar-only
 - Comprehensive unit tests for heater control functionality
 - Extended timeout support for monitoring to handle connection delays
 - `get_status()` method to PoolController for retrieving single heartbeat packet status
+- Development workflow guidance in CLAUDE.md
+- CI workflow optimization to skip documentation-only changes
 
 ### Fixed
 - Packet buffering issues in monitor causing burst delivery of stale packets
