@@ -238,7 +238,7 @@ class TestPoolController:
         mock_connection.send_packet.return_value = True
 
         controller = PoolController()
-        
+
         # Test each mode for pool
         test_cases = [
             ("off", 0x00),           # 0b00 << 4 = 0x00
@@ -250,7 +250,7 @@ class TestPoolController:
         for mode, expected_heat_source in test_cases:
             mock_connection.reset_mock()
             controller.set_heater_mode(mode, "pool")
-            
+
             # Verify packet structure
             call_args = mock_connection.send_packet.call_args[0][0]
             assert len(call_args) == 17  # Command packet length
@@ -266,7 +266,7 @@ class TestPoolController:
         mock_connection.send_packet.return_value = True
 
         controller = PoolController()
-        
+
         # Test each mode for spa
         test_cases = [
             ("off", 0x00),           # 0b00 << 6 = 0x00
@@ -278,7 +278,7 @@ class TestPoolController:
         for mode, expected_heat_source in test_cases:
             mock_connection.reset_mock()
             controller.set_heater_mode(mode, "spa")
-            
+
             # Verify packet structure
             call_args = mock_connection.send_packet.call_args[0][0]
             assert len(call_args) == 17  # Command packet length
