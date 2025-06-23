@@ -19,6 +19,9 @@ controller.set_spa_temperature('104f')
 # Set heater mode
 controller.set_heater_mode('heater', 'pool')
 
+# Control auxiliary equipment
+controller.set_aux_equipment(1, True)  # Turn on aux1
+
 # Get system status
 status = controller.get_status()
 
@@ -90,6 +93,26 @@ Set the heater/solar mode for pool or spa.
 - `verbose`: Enable verbose packet output
 
 **Returns:** `True` if ACK received, `False` otherwise
+
+##### set_aux_equipment(aux_num: int, state: bool, verbose: bool = False) -> bool
+
+Set the state of an auxiliary equipment circuit.
+
+**Parameters:**
+- `aux_num`: Auxiliary circuit number (1-6)
+- `state`: `True` to turn on, `False` to turn off
+- `verbose`: Enable verbose packet output
+
+**Returns:** `True` if ACK received, `False` otherwise
+
+**Example:**
+```python
+# Turn on aux1
+success = controller.set_aux_equipment(1, True)
+
+# Turn off aux2 with verbose output
+success = controller.set_aux_equipment(2, False, verbose=True)
+```
 
 ##### get_status(timeout: float = 10.0) -> Optional[dict]
 
@@ -187,6 +210,16 @@ When using `parse_heartbeat_packet()` or `get_status()`, the following fields ar
 
 #### Equipment State (Primary Equipment - Byte 8)
 Bit values indicate if circuits are ON (1) or OFF (0):
+
+**Parsed Fields:**
+- `spa_on`: Spa circuit state (boolean)
+- `pool_on`: Pool circuit state (boolean)
+- `aux1_on`: Auxiliary circuit 1 state (boolean)
+- `aux2_on`: Auxiliary circuit 2 state (boolean)
+- `aux3_on`: Auxiliary circuit 3 state (boolean)
+- `aux4_on`: Auxiliary circuit 4 state (boolean)
+- `aux5_on`: Auxiliary circuit 5 state (boolean)
+- `aux6_on`: Auxiliary circuit 6 state (boolean)
 
 **3x00/3830 Systems:**
 - Bit 0: Spa state
@@ -306,16 +339,23 @@ fahrenheit = celsius_to_fahrenheit(26.67)  # Returns 80.0
 ### Packet Creation and Parsing
 
 ```python
-# Create command packet
+# Create command packet for temperature
 packet = create_command_packet(
     pool_temp=celsius_to_byte(26.67),  # 80°F
     enable_bits=1 << 5  # Enable pool temperature field
+)
+
+# Create command packet for auxiliary equipment
+packet = create_command_packet(
+    primary_equip=0x04,  # Turn on aux1 (bit 2)
+    enable_bits=1 << 0   # Enable primary equipment field
 )
 
 # Parse heartbeat packet
 parsed = parse_heartbeat_packet(raw_packet_bytes)
 if parsed:
     print(f"Pool temp: {parsed['pool_water_temp_f']:.1f}°F")
+    print(f"Aux1: {'ON' if parsed['aux1_on'] else 'OFF'}")
 ```
 
 ## Environment Variables
@@ -359,6 +399,10 @@ compoolctl set-spa 104f --verbose
 compoolctl set-heater heater pool
 compoolctl set-heater solar-only spa
 
+# Control auxiliary equipment
+compoolctl set-aux aux1 on
+compoolctl set-aux aux2 off --verbose
+
 # Monitor heartbeat packets
 compoolctl monitor --verbose
 
@@ -393,6 +437,20 @@ controller.set_heater_mode('solar-only', 'spa')
 controller.set_heater_mode('off', 'pool')
 ```
 
+### Auxiliary Equipment Control
+```python
+# Turn on auxiliary equipment
+controller.set_aux_equipment(1, True)   # Turn on aux1
+controller.set_aux_equipment(3, True)   # Turn on aux3
+
+# Turn off auxiliary equipment
+controller.set_aux_equipment(2, False)  # Turn off aux2
+
+# Check result
+if controller.set_aux_equipment(1, True):
+    print("Aux1 turned on successfully")
+```
+
 ### Status Monitoring
 ```python
 # Get current status
@@ -402,6 +460,11 @@ if status:
     print(f"Spa: {status['spa_water_temp_f']:.1f}°F")
     print(f"Heater: {'ON' if status['heater_on'] else 'OFF'}")
     print(f"Solar: {'ON' if status['solar_on'] else 'OFF'}")
+    
+    # Check auxiliary equipment status
+    print(f"Aux1: {'ON' if status['aux1_on'] else 'OFF'}")
+    print(f"Aux2: {'ON' if status['aux2_on'] else 'OFF'}")
+    print(f"Aux3: {'ON' if status['aux3_on'] else 'OFF'}")
 ```
 
 ### Continuous Monitoring
