@@ -104,6 +104,19 @@ class PoolMonitor:
         if parsed['freeze_mode']:
             status_flags.append("FREEZE")
 
+        # Add auxiliary equipment status
+        aux_flags = []
+        if parsed['spa_on']:
+            aux_flags.append("SPA")
+        if parsed['pool_on']:
+            aux_flags.append("POOL")
+        for i in range(1, 7):  # aux1-aux6
+            if parsed.get(f'aux{i}_on', False):
+                aux_flags.append(f"AUX{i}")
+
+        if aux_flags:
+            status_flags.extend(aux_flags)
+
         status = f" [{'/'.join(status_flags)}]" if status_flags else ""
 
         # Main status line
@@ -120,6 +133,16 @@ class PoolMonitor:
                   f"Secondary: {parsed['secondary_equip']}")
             print(f"          Pool Solar: {parsed['pool_solar_temp']:.1f}°C "
                   f"Spa Solar: {parsed['spa_solar_temp']:.1f}°C")
+
+            # Show auxiliary equipment states
+            aux_states = []
+            aux_states.append(f"SPA:{'ON' if parsed['spa_on'] else 'OFF'}")
+            aux_states.append(f"POOL:{'ON' if parsed['pool_on'] else 'OFF'}")
+            for i in range(1, 7):  # aux1-aux6
+                state = "ON" if parsed.get(f'aux{i}_on', False) else "OFF"
+                aux_states.append(f"AUX{i}:{state}")
+
+            print(f"          Equipment: {' '.join(aux_states)}")
 
 
 def monitor_command(

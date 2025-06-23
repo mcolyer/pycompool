@@ -166,6 +166,66 @@ class PoolController:
 
         return success
 
+    def set_aux_equipment(self, aux_num: int, state: bool, verbose: bool = False) -> bool:
+        """
+        Set the state of an auxiliary equipment circuit.
+
+        Args:
+            aux_num: Auxiliary circuit number (1-6)
+            state: True to turn on, False to turn off
+            verbose: Enable verbose output
+
+        Returns:
+            True if command was acknowledged, False otherwise
+
+        Example:
+            >>> controller = PoolController()
+            >>> controller.set_aux_equipment(1, True)  # Turn on aux1
+            True
+            >>> controller.set_aux_equipment(2, False)  # Turn off aux2
+            True
+        """
+        # Validate aux number
+        if not (1 <= aux_num <= 6):
+            raise ValueError(f"Invalid aux number '{aux_num}'. Must be 1-6.")
+
+        # Map aux number to bit position
+        # aux1 = bit 2, aux2 = bit 3, etc.
+        bit_position = aux_num + 1
+
+        # Get current status to preserve other equipment states
+        current_status = self.get_status(timeout=2.0)
+        current_primary_equip = 0
+
+        if current_status:
+            # Extract current primary equipment byte from hex string
+            primary_hex = current_status.get('primary_equip', '0x00')
+            current_primary_equip = int(primary_hex, 16)
+
+        # Set or clear the bit for this aux circuit
+        if state:
+            primary_equip = current_primary_equip | (1 << bit_position)
+        else:
+            primary_equip = current_primary_equip & ~(1 << bit_position)
+
+        # Use bit 0 to enable primary equipment field
+        enable_bits = 1 << 0
+
+        packet = create_command_packet(
+            primary_equip=primary_equip,
+            enable_bits=enable_bits
+        )
+
+        if verbose:
+            print(f"→ {packet.hex(' ')}")
+
+        success = self.connection.send_packet(packet)
+
+        print(f"Aux{aux_num} → {'ON' if state else 'OFF'} — "
+              f"{'✓ ACK' if success else '✗ NO ACK'}")
+
+        return success
+
     def get_status(self, timeout: float = 10.0) -> Optional[dict]:
         """
         Listen for a single heartbeat packet and return the parsed status data.

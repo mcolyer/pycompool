@@ -387,3 +387,115 @@ class TestPoolController:
         controller.get_status(timeout=5.0)
 
         mock_connection.read_packets.assert_called_once_with(packet_size=24, timeout=5.0)
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_set_aux_equipment_success(self, mock_connection_class, capsys):
+        """Test successful auxiliary equipment control."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.send_packet.return_value = True
+
+        # Mock get_status to return current state
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = {'primary_equip': '0x00'}  # No equipment on
+
+            controller = PoolController()
+            result = controller.set_aux_equipment(1, True)
+
+            assert result is True
+            mock_connection.send_packet.assert_called_once()
+
+            # Check output
+            captured = capsys.readouterr()
+            assert "Aux1 → ON — ✓ ACK" in captured.out
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_set_aux_equipment_failure(self, mock_connection_class, capsys):
+        """Test failed auxiliary equipment control."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.send_packet.return_value = False
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = {'primary_equip': '0x04'}  # aux1 on
+
+            controller = PoolController()
+            result = controller.set_aux_equipment(1, False)
+
+            assert result is False
+
+            # Check output
+            captured = capsys.readouterr()
+            assert "Aux1 → OFF — ✗ NO ACK" in captured.out
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_set_aux_equipment_verbose(self, mock_connection_class, capsys):
+        """Test auxiliary equipment control with verbose output."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.send_packet.return_value = True
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = {'primary_equip': '0x00'}
+
+            controller = PoolController()
+            result = controller.set_aux_equipment(2, True, verbose=True)
+
+            assert result is True
+
+            # Check verbose output shows packet hex
+            captured = capsys.readouterr()
+            assert "→" in captured.out  # Packet hex output
+            assert "Aux2 → ON" in captured.out
+
+    def test_set_aux_equipment_invalid_aux_number(self):
+        """Test invalid aux number raises ValueError."""
+        controller = PoolController()
+
+        with pytest.raises(ValueError, match="Invalid aux number '0'. Must be 1-6."):
+            controller.set_aux_equipment(0, True)
+
+        with pytest.raises(ValueError, match="Invalid aux number '7'. Must be 1-6."):
+            controller.set_aux_equipment(7, True)
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_aux_equipment_packet_content(self, mock_connection_class):
+        """Test that aux equipment packet has correct content."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.send_packet.return_value = True
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = {'primary_equip': '0x00'}
+
+            controller = PoolController()
+
+            # Test turning on aux1 (bit 2)
+            controller.set_aux_equipment(1, True)
+
+            # Verify packet structure
+            call_args = mock_connection.send_packet.call_args[0][0]
+            assert len(call_args) == 17  # Command packet length
+            assert call_args[:2] == b"\xFF\xAA"  # Sync bytes
+            assert call_args[8] == 0x04  # Primary equip byte (bit 2 set)
+            assert call_args[14] == 0x01  # Enable bit 0 for primary equip
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_aux_equipment_preserves_other_states(self, mock_connection_class):
+        """Test that aux equipment control preserves other equipment states."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.send_packet.return_value = True
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            # Mock existing state with aux2 already on (bit 3 = 0x08)
+            mock_status.return_value = {'primary_equip': '0x08'}
+
+            controller = PoolController()
+
+            # Turn on aux1 while aux2 is already on
+            controller.set_aux_equipment(1, True)
+
+            # Verify packet preserves aux2 and adds aux1
+            call_args = mock_connection.send_packet.call_args[0][0]
+            assert call_args[8] == 0x0C  # Both aux1 (bit 2) and aux2 (bit 3) on

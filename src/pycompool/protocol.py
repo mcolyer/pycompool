@@ -161,6 +161,15 @@ def parse_heartbeat_packet(data: bytes) -> Optional[dict]:
         'solar_on': bool(secondary_equip & 0x04),
         'remotes_enabled': bool(secondary_equip & 0x08),
         'freeze_mode': bool(secondary_equip & 0x80),
+        # Primary equipment state (auxiliary circuits)
+        'spa_on': bool(primary_equip & 0x01),      # Bit 0
+        'pool_on': bool(primary_equip & 0x02),     # Bit 1
+        'aux1_on': bool(primary_equip & 0x04),     # Bit 2
+        'aux2_on': bool(primary_equip & 0x08),     # Bit 3
+        'aux3_on': bool(primary_equip & 0x10),     # Bit 4
+        'aux4_on': bool(primary_equip & 0x20),     # Bit 5
+        'aux5_on': bool(primary_equip & 0x40),     # Bit 6
+        'aux6_on': bool(primary_equip & 0x80),     # Bit 7
         'pool_water_temp': byte_to_celsius(water_temp) if water_temp else 0,
         'pool_solar_temp': solar_temp / 2.0 if solar_temp else 0,
         'spa_water_temp': byte_to_celsius(spa_water_temp) if spa_water_temp else 0,
@@ -176,7 +185,7 @@ def parse_heartbeat_packet(data: bytes) -> Optional[dict]:
     }
 
 
-def create_command_packet(pool_temp: int = 0, spa_temp: int = 0, heat_source: int = 0, enable_bits: int = 0) -> bytes:
+def create_command_packet(pool_temp: int = 0, spa_temp: int = 0, heat_source: int = 0, primary_equip: int = 0, enable_bits: int = 0) -> bytes:
     """
     Create a command packet to send to the controller.
 
@@ -184,6 +193,7 @@ def create_command_packet(pool_temp: int = 0, spa_temp: int = 0, heat_source: in
         pool_temp: Pool temperature in encoded byte format
         spa_temp: Spa temperature in encoded byte format
         heat_source: Heat source configuration byte
+        primary_equip: Primary equipment state byte (auxiliary circuits)
         enable_bits: Bits indicating which fields are valid
 
     Returns:
@@ -192,7 +202,7 @@ def create_command_packet(pool_temp: int = 0, spa_temp: int = 0, heat_source: in
     header = [
         *SYNC, DEST, SRC, OPCODE, INFO_LEN,
         0x00, 0x00,          # minutes, hours
-        0x00, 0x00, heat_source,  # primary, secondary, heat-source
+        primary_equip, 0x00, heat_source,  # primary, secondary, heat-source
         pool_temp,
         spa_temp,
         0x00,                # switch state

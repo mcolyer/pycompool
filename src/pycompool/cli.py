@@ -9,7 +9,12 @@ from typing import Optional
 
 import fire
 
-from .commands import set_heater_command, set_pool_command, set_spa_command
+from .commands import (
+    set_aux_command,
+    set_heater_command,
+    set_pool_command,
+    set_spa_command,
+)
 from .monitor import monitor_command
 
 
@@ -84,6 +89,31 @@ class CLI:
             compoolctl set-heater off pool --verbose
         """
         set_heater_command(mode, target, port, baud, verbose)
+
+    def set_aux(
+        self,
+        aux_name: str,
+        state: str,
+        port: Optional[str] = None,
+        baud: Optional[int] = None,
+        verbose: bool = False
+    ) -> None:
+        """
+        Set auxiliary equipment state.
+
+        Args:
+            aux_name: Auxiliary circuit name ('aux1', 'aux2', etc.)
+            state: Desired state ('on' or 'off')
+            port: Serial port override
+            baud: Baud rate override
+            verbose: Enable verbose output
+
+        Examples:
+            compoolctl set-aux aux1 on
+            compoolctl set-aux aux2 off
+            compoolctl set-aux aux3 on --verbose
+        """
+        set_aux_command(aux_name, state, port, baud, verbose)
 
     def monitor(
         self,

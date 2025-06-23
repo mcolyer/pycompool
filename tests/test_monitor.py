@@ -71,6 +71,15 @@ class TestPoolMonitor:
             'secondary_equip': '0x02',
             'pool_solar_temp': 35.0,
             'spa_solar_temp': 45.0,
+            # Auxiliary equipment states
+            'spa_on': True,   # bit 0 of 0x03
+            'pool_on': True,  # bit 1 of 0x03
+            'aux1_on': False,
+            'aux2_on': False,
+            'aux3_on': False,
+            'aux4_on': False,
+            'aux5_on': False,
+            'aux6_on': False,
         }
 
     def test_display_heartbeat_basic(self, capsys):
@@ -87,7 +96,7 @@ class TestPoolMonitor:
         assert "Spa: 102.0°F/104.0°F" in captured.out
         assert "Air: 70.0°F" in captured.out
         assert "Time: 14:30" in captured.out
-        assert "[HEAT]" in captured.out  # Status flag
+        assert "[HEAT/SPA/POOL]" in captured.out  # Status flags including aux equipment
 
     def test_display_heartbeat_verbose(self, capsys):
         """Test verbose heartbeat display."""
@@ -118,7 +127,7 @@ class TestPoolMonitor:
             monitor._display_heartbeat(heartbeat_data, verbose=False)
 
         captured = capsys.readouterr()
-        assert "[SERVICE/HEAT/SOLAR/FREEZE]" in captured.out
+        assert "[SERVICE/HEAT/SOLAR/FREEZE/SPA/POOL]" in captured.out
 
     def test_display_heartbeat_no_flags(self, capsys):
         """Test heartbeat display with no status flags."""
@@ -129,6 +138,8 @@ class TestPoolMonitor:
             'heater_on': False,
             'solar_on': False,
             'freeze_mode': False,
+            'spa_on': False,
+            'pool_on': False,
         })
 
         with patch('pycompool.monitor.time.strftime', return_value='14:30:15'):
