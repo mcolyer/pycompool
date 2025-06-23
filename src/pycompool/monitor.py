@@ -106,11 +106,7 @@ class PoolMonitor:
 
         # Add auxiliary equipment status
         aux_flags = []
-        if parsed['spa_on']:
-            aux_flags.append("SPA")
-        if parsed['pool_on']:
-            aux_flags.append("POOL")
-        for i in range(1, 7):  # aux1-aux6
+        for i in range(1, 9):  # aux1-aux8
             if parsed.get(f'aux{i}_on', False):
                 aux_flags.append(f"AUX{i}")
 
@@ -136,9 +132,7 @@ class PoolMonitor:
 
             # Show auxiliary equipment states
             aux_states = []
-            aux_states.append(f"SPA:{'ON' if parsed['spa_on'] else 'OFF'}")
-            aux_states.append(f"POOL:{'ON' if parsed['pool_on'] else 'OFF'}")
-            for i in range(1, 7):  # aux1-aux6
+            for i in range(1, 9):  # aux1-aux8
                 state = "ON" if parsed.get(f'aux{i}_on', False) else "OFF"
                 aux_states.append(f"AUX{i}:{state}")
 

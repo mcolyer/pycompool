@@ -146,7 +146,7 @@ The RS-485 protocol uses:
 - Temperature encoded as celsius * 4 (0-255 range)
 - Enable bits control which setpoint is being modified (bit 5 for pool, bit 6 for spa, bit 0 for primary equipment)
 - Heat source control using bits 4-7 (bit 4 enables, bits 4-5 for pool, bits 6-7 for spa)
-- Primary equipment control (auxiliary circuits) in byte 8 with aux1=bit2, aux2=bit3, etc.
+- Primary equipment control (auxiliary circuits) in byte 8 with aux1=bit0, aux2=bit1, etc. (3820 system layout)
 
 ## Monitoring and Connection Issues
 
@@ -233,8 +233,9 @@ When working with protocol bytes that control multiple features:
 ### Protocol Documentation
 
 The controller uses different byte layouts for different system types:
+- **3820 Systems (Current Implementation)**: Aux1-Aux8 in bits 0-7
 - **3x00/3830 Systems**: Spa/Pool in bits 0-1, Aux1-Aux6 in bits 2-7
 - **3810 Systems**: High/Low temp in bits 0-1, Aux1-Aux6 in bits 2-7  
-- **3820 Systems**: Aux1-Aux8 in bits 0-7
 
 When implementing equipment control, consider these variations and test with appropriate bit patterns.
+The current implementation assumes 3820 system layout for maximum auxiliary circuit support.

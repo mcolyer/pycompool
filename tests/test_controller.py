@@ -452,11 +452,11 @@ class TestPoolController:
         """Test invalid aux number raises ValueError."""
         controller = PoolController()
 
-        with pytest.raises(ValueError, match="Invalid aux number '0'. Must be 1-6."):
+        with pytest.raises(ValueError, match="Invalid aux number '0'. Must be 1-8."):
             controller.set_aux_equipment(0, True)
 
-        with pytest.raises(ValueError, match="Invalid aux number '7'. Must be 1-6."):
-            controller.set_aux_equipment(7, True)
+        with pytest.raises(ValueError, match="Invalid aux number '9'. Must be 1-8."):
+            controller.set_aux_equipment(9, True)
 
     @patch('pycompool.controller.SerialConnection')
     def test_aux_equipment_packet_content(self, mock_connection_class):
@@ -470,14 +470,14 @@ class TestPoolController:
 
             controller = PoolController()
 
-            # Test turning on aux1 (bit 2)
+            # Test turning on aux1 (bit 0)
             controller.set_aux_equipment(1, True)
 
             # Verify packet structure
             call_args = mock_connection.send_packet.call_args[0][0]
             assert len(call_args) == 17  # Command packet length
             assert call_args[:2] == b"\xFF\xAA"  # Sync bytes
-            assert call_args[8] == 0x04  # Primary equip byte (bit 2 set)
+            assert call_args[8] == 0x01  # Primary equip byte (bit 0 set)
             assert call_args[14] == 0x01  # Enable bit 0 for primary equip
 
     @patch('pycompool.controller.SerialConnection')
@@ -488,8 +488,8 @@ class TestPoolController:
         mock_connection.send_packet.return_value = True
 
         with patch.object(PoolController, 'get_status') as mock_status:
-            # Mock existing state with aux2 already on (bit 3 = 0x08)
-            mock_status.return_value = {'primary_equip': '0x08'}
+            # Mock existing state with aux2 already on (bit 1 = 0x02)
+            mock_status.return_value = {'primary_equip': '0x02'}
 
             controller = PoolController()
 
@@ -498,7 +498,7 @@ class TestPoolController:
 
             # Verify packet preserves aux2 and adds aux1
             call_args = mock_connection.send_packet.call_args[0][0]
-            assert call_args[8] == 0x0C  # Both aux1 (bit 2) and aux2 (bit 3) on
+            assert call_args[8] == 0x03  # Both aux1 (bit 0) and aux2 (bit 1) on
 
 
 class TestServiceModeProtection:

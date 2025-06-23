@@ -161,15 +161,15 @@ def parse_heartbeat_packet(data: bytes) -> Optional[dict]:
         'solar_on': bool(secondary_equip & 0x04),
         'remotes_enabled': bool(secondary_equip & 0x08),
         'freeze_mode': bool(secondary_equip & 0x80),
-        # Primary equipment state (auxiliary circuits)
-        'spa_on': bool(primary_equip & 0x01),      # Bit 0
-        'pool_on': bool(primary_equip & 0x02),     # Bit 1
-        'aux1_on': bool(primary_equip & 0x04),     # Bit 2
-        'aux2_on': bool(primary_equip & 0x08),     # Bit 3
-        'aux3_on': bool(primary_equip & 0x10),     # Bit 4
-        'aux4_on': bool(primary_equip & 0x20),     # Bit 5
-        'aux5_on': bool(primary_equip & 0x40),     # Bit 6
-        'aux6_on': bool(primary_equip & 0x80),     # Bit 7
+        # Primary equipment state (auxiliary circuits - 3820 system layout)
+        'aux1_on': bool(primary_equip & 0x01),     # Bit 0
+        'aux2_on': bool(primary_equip & 0x02),     # Bit 1
+        'aux3_on': bool(primary_equip & 0x04),     # Bit 2
+        'aux4_on': bool(primary_equip & 0x08),     # Bit 3
+        'aux5_on': bool(primary_equip & 0x10),     # Bit 4
+        'aux6_on': bool(primary_equip & 0x20),     # Bit 5
+        'aux7_on': bool(primary_equip & 0x40),     # Bit 6
+        'aux8_on': bool(primary_equip & 0x80),     # Bit 7
         'pool_water_temp': byte_to_celsius(water_temp) if water_temp else 0,
         'pool_solar_temp': solar_temp / 2.0 if solar_temp else 0,
         'spa_water_temp': byte_to_celsius(spa_water_temp) if spa_water_temp else 0,

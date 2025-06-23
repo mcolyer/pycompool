@@ -200,7 +200,7 @@ class PoolController:
         Set the state of an auxiliary equipment circuit.
 
         Args:
-            aux_num: Auxiliary circuit number (1-6)
+            aux_num: Auxiliary circuit number (1-8)
             state: True to turn on, False to turn off
             verbose: Enable verbose output
 
@@ -219,12 +219,12 @@ class PoolController:
             return False
 
         # Validate aux number
-        if not (1 <= aux_num <= 6):
-            raise ValueError(f"Invalid aux number '{aux_num}'. Must be 1-6.")
+        if not (1 <= aux_num <= 8):
+            raise ValueError(f"Invalid aux number '{aux_num}'. Must be 1-8.")
 
         # Map aux number to bit position
-        # aux1 = bit 2, aux2 = bit 3, etc.
-        bit_position = aux_num + 1
+        # aux1 = bit 0, aux2 = bit 1, etc. (3820 system layout)
+        bit_position = aux_num - 1
 
         # Get current status to preserve other equipment states
         current_status = self.get_status(timeout=2.0)

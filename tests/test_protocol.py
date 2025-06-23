@@ -127,7 +127,7 @@ class TestPacketCreation:
     def test_create_command_packet_with_primary_equip(self):
         """Test command packet with primary equipment control."""
         packet = create_command_packet(
-            primary_equip=0x14,  # aux1 and aux3 on
+            primary_equip=0x14,  # aux3 and aux5 on (bits 2 and 4)
             enable_bits=0x01     # Enable primary equip field
         )
 
@@ -204,15 +204,15 @@ class TestHeartbeatParsing:
         assert parsed['desired_pool_temp'] == 30.0
         assert parsed['desired_spa_temp'] == 42.0
 
-        # Test auxiliary equipment parsing
-        assert parsed['spa_on'] is True      # Bit 0 of 0x03
-        assert parsed['pool_on'] is True     # Bit 1 of 0x03
-        assert parsed['aux1_on'] is False    # Bit 2 of 0x03
-        assert parsed['aux2_on'] is False    # Bit 3 of 0x03
-        assert parsed['aux3_on'] is False    # Bit 4 of 0x03
-        assert parsed['aux4_on'] is False    # Bit 5 of 0x03
-        assert parsed['aux5_on'] is False    # Bit 6 of 0x03
-        assert parsed['aux6_on'] is False    # Bit 7 of 0x03
+        # Test auxiliary equipment parsing (3820 system layout)
+        assert parsed['aux1_on'] is True     # Bit 0 of 0x03
+        assert parsed['aux2_on'] is True     # Bit 1 of 0x03
+        assert parsed['aux3_on'] is False    # Bit 2 of 0x03
+        assert parsed['aux4_on'] is False    # Bit 3 of 0x03
+        assert parsed['aux5_on'] is False    # Bit 4 of 0x03
+        assert parsed['aux6_on'] is False    # Bit 5 of 0x03
+        assert parsed['aux7_on'] is False    # Bit 6 of 0x03
+        assert parsed['aux8_on'] is False    # Bit 7 of 0x03
 
     def test_parse_heartbeat_status_flags(self):
         """Test parsing status flags from secondary equipment byte."""
@@ -227,18 +227,18 @@ class TestHeartbeatParsing:
 
     def test_parse_heartbeat_aux_equipment(self):
         """Test parsing auxiliary equipment from primary equipment byte."""
-        # Test with aux1 and aux3 on (bits 2 and 4)
+        # Test with aux3 and aux5 on (bits 2 and 4)
         packet = self.create_test_heartbeat(primary_equip=0x14)  # 0x14 = 0b00010100
         parsed = parse_heartbeat_packet(packet)
 
-        assert parsed['spa_on'] is False     # Bit 0
-        assert parsed['pool_on'] is False    # Bit 1
-        assert parsed['aux1_on'] is True     # Bit 2
-        assert parsed['aux2_on'] is False    # Bit 3
-        assert parsed['aux3_on'] is True     # Bit 4
-        assert parsed['aux4_on'] is False    # Bit 5
-        assert parsed['aux5_on'] is False    # Bit 6
-        assert parsed['aux6_on'] is False    # Bit 7
+        assert parsed['aux1_on'] is False    # Bit 0
+        assert parsed['aux2_on'] is False    # Bit 1
+        assert parsed['aux3_on'] is True     # Bit 2
+        assert parsed['aux4_on'] is False    # Bit 3
+        assert parsed['aux5_on'] is True     # Bit 4
+        assert parsed['aux6_on'] is False    # Bit 5
+        assert parsed['aux7_on'] is False    # Bit 6
+        assert parsed['aux8_on'] is False    # Bit 7
 
     def test_parse_heartbeat_invalid_sync(self):
         """Test parsing with invalid sync bytes."""

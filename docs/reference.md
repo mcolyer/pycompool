@@ -99,7 +99,7 @@ Set the heater/solar mode for pool or spa.
 Set the state of an auxiliary equipment circuit.
 
 **Parameters:**
-- `aux_num`: Auxiliary circuit number (1-6)
+- `aux_num`: Auxiliary circuit number (1-8)
 - `state`: `True` to turn on, `False` to turn off
 - `verbose`: Enable verbose packet output
 
@@ -212,32 +212,28 @@ When using `parse_heartbeat_packet()` or `get_status()`, the following fields ar
 Bit values indicate if circuits are ON (1) or OFF (0):
 
 **Parsed Fields:**
-- `spa_on`: Spa circuit state (boolean)
-- `pool_on`: Pool circuit state (boolean)
 - `aux1_on`: Auxiliary circuit 1 state (boolean)
 - `aux2_on`: Auxiliary circuit 2 state (boolean)
 - `aux3_on`: Auxiliary circuit 3 state (boolean)
 - `aux4_on`: Auxiliary circuit 4 state (boolean)
 - `aux5_on`: Auxiliary circuit 5 state (boolean)
 - `aux6_on`: Auxiliary circuit 6 state (boolean)
+- `aux7_on`: Auxiliary circuit 7 state (boolean)
+- `aux8_on`: Auxiliary circuit 8 state (boolean)
 
-**3x00/3830 Systems:**
-- Bit 0: Spa state
-- Bit 1: Pool state  
-- Bit 2: Aux1 state
-- Bit 3: Aux2 state
-- Bit 4: Aux3 state
-- Bit 5: Aux4 state
-- Bit 6: Aux5 state
-- Bit 7: Aux6 state
+**3820 Systems (Current Implementation):**
+- Bit 0: Aux1 state
+- Bit 1: Aux2 state
+- Bit 2: Aux3 state
+- Bit 3: Aux4 state
+- Bit 4: Aux5 state
+- Bit 5: Aux6 state
+- Bit 6: Aux7 state
+- Bit 7: Aux8 state
 
-**3810 Systems (Single body, dual temperature):**
-- Bit 0: High temperature circuit
-- Bit 1: Low temperature circuit
-- Bits 2-7: Aux1-Aux6
-
-**3820 Systems:**
-- Bits 0-7: Aux1-Aux8
+**Alternative System Layouts:**
+- **3x00/3830**: Spa/Pool in bits 0-1, Aux1-Aux6 in bits 2-7
+- **3810**: High/Low temp in bits 0-1, Aux1-Aux6 in bits 2-7
 
 #### System State (Secondary Equipment - Byte 9)
 - `primary_equip`: Raw primary equipment byte as hex string
@@ -355,7 +351,9 @@ packet = create_command_packet(
 parsed = parse_heartbeat_packet(raw_packet_bytes)
 if parsed:
     print(f"Pool temp: {parsed['pool_water_temp_f']:.1f}°F")
-    print(f"Aux1: {'ON' if parsed['aux1_on'] else 'OFF'}")
+    for i in range(1, 9):  # aux1-aux8
+        aux_status = "ON" if parsed.get(f'aux{i}_on', False) else "OFF"
+        print(f"Aux{i}: {aux_status}")
 ```
 
 ## Environment Variables
@@ -462,9 +460,9 @@ if status:
     print(f"Solar: {'ON' if status['solar_on'] else 'OFF'}")
     
     # Check auxiliary equipment status
-    print(f"Aux1: {'ON' if status['aux1_on'] else 'OFF'}")
-    print(f"Aux2: {'ON' if status['aux2_on'] else 'OFF'}")
-    print(f"Aux3: {'ON' if status['aux3_on'] else 'OFF'}")
+    for i in range(1, 9):  # aux1-aux8
+        aux_status = "ON" if status.get(f'aux{i}_on', False) else "OFF"
+        print(f"Aux{i}: {aux_status}")
 ```
 
 ### Continuous Monitoring
