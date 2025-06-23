@@ -35,6 +35,23 @@ class PoolController:
         """
         self.connection = SerialConnection(port, baud)
 
+    def _check_service_mode(self) -> bool:
+        """
+        Check if the system is in service mode before sending commands.
+
+        Returns:
+            True if service mode is active (commands should be blocked), False otherwise
+        """
+        try:
+            status = self.get_status(timeout=2.0)
+            if status and status.get('service_mode', False):
+                print("⚠️  Service mode is active - commands are disabled for safety")
+                return True
+        except Exception:
+            # If we can't get status, allow the command (fail open)
+            pass
+        return False
+
     def set_pool_temperature(self, temperature: str, verbose: bool = False) -> bool:
         """
         Set the desired pool temperature.
@@ -51,6 +68,10 @@ class PoolController:
             >>> controller.set_pool_temperature('80f')
             True
         """
+        # Check if system is in service mode
+        if self._check_service_mode():
+            return False
+
         temp_celsius = tempstr_to_celsius(temperature)
         temp_byte = celsius_to_byte(temp_celsius)
         enable_bits = 1 << 5  # Enable pool temperature field
@@ -87,6 +108,10 @@ class PoolController:
             >>> controller.set_spa_temperature('104f')
             True
         """
+        # Check if system is in service mode
+        if self._check_service_mode():
+            return False
+
         temp_celsius = tempstr_to_celsius(temperature)
         temp_byte = celsius_to_byte(temp_celsius)
         enable_bits = 1 << 6  # Enable spa temperature field
@@ -124,6 +149,10 @@ class PoolController:
             >>> controller.set_heater_mode('heater', 'pool')
             True
         """
+        # Check if system is in service mode
+        if self._check_service_mode():
+            return False
+
         # Validate inputs
         valid_modes = {'off', 'heater', 'solar-priority', 'solar-only'}
         valid_targets = {'pool', 'spa'}
@@ -162,6 +191,70 @@ class PoolController:
         success = self.connection.send_packet(packet)
 
         print(f"{target.capitalize()} heating → {mode} — "
+              f"{'✓ ACK' if success else '✗ NO ACK'}")
+
+        return success
+
+    def set_aux_equipment(self, aux_num: int, state: bool, verbose: bool = False) -> bool:
+        """
+        Set the state of an auxiliary equipment circuit.
+
+        Args:
+            aux_num: Auxiliary circuit number (1-8)
+            state: True to turn on, False to turn off
+            verbose: Enable verbose output
+
+        Returns:
+            True if command was acknowledged, False otherwise
+
+        Example:
+            >>> controller = PoolController()
+            >>> controller.set_aux_equipment(1, True)  # Turn on aux1
+            True
+            >>> controller.set_aux_equipment(2, False)  # Turn off aux2
+            True
+        """
+        # Check if system is in service mode
+        if self._check_service_mode():
+            return False
+
+        # Validate aux number
+        if not (1 <= aux_num <= 8):
+            raise ValueError(f"Invalid aux number '{aux_num}'. Must be 1-8.")
+
+        # Map aux number to bit position
+        # aux1 = bit 0, aux2 = bit 1, etc. (3820 system layout)
+        bit_position = aux_num - 1
+
+        # Get current status to preserve other equipment states
+        current_status = self.get_status(timeout=2.0)
+        current_primary_equip = 0
+
+        if current_status:
+            # Extract current primary equipment byte from hex string
+            primary_hex = current_status.get('primary_equip', '0x00')
+            current_primary_equip = int(primary_hex, 16)
+
+        # Set or clear the bit for this aux circuit
+        if state:
+            primary_equip = current_primary_equip | (1 << bit_position)
+        else:
+            primary_equip = current_primary_equip & ~(1 << bit_position)
+
+        # Use bit 0 to enable primary equipment field
+        enable_bits = 1 << 0
+
+        packet = create_command_packet(
+            primary_equip=primary_equip,
+            enable_bits=enable_bits
+        )
+
+        if verbose:
+            print(f"→ {packet.hex(' ')}")
+
+        success = self.connection.send_packet(packet)
+
+        print(f"Aux{aux_num} → {'ON' if state else 'OFF'} — "
               f"{'✓ ACK' if success else '✗ NO ACK'}")
 
         return success

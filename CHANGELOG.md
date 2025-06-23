@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Auxiliary equipment control commands for aux1-aux8 circuits
+- `compoolctl set-aux <aux_name> <state>` command for controlling auxiliary equipment
+- Real-time auxiliary equipment status display in monitor output
+- Auxiliary equipment state parsing from heartbeat packets (aux1_on-aux8_on using 3820 system layout)
+- Service mode safety check - all commands are blocked when service mode is active
+- Comprehensive test coverage for all auxiliary equipment functionality and safety features
+
 ## [0.1.2] - 2025-01-18
 
 ### Added

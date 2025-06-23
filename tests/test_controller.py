@@ -387,3 +387,271 @@ class TestPoolController:
         controller.get_status(timeout=5.0)
 
         mock_connection.read_packets.assert_called_once_with(packet_size=24, timeout=5.0)
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_set_aux_equipment_success(self, mock_connection_class, capsys):
+        """Test successful auxiliary equipment control."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.send_packet.return_value = True
+
+        # Mock get_status to return current state
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = {'primary_equip': '0x00'}  # No equipment on
+
+            controller = PoolController()
+            result = controller.set_aux_equipment(1, True)
+
+            assert result is True
+            mock_connection.send_packet.assert_called_once()
+
+            # Check output
+            captured = capsys.readouterr()
+            assert "Aux1 → ON — ✓ ACK" in captured.out
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_set_aux_equipment_failure(self, mock_connection_class, capsys):
+        """Test failed auxiliary equipment control."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.send_packet.return_value = False
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = {'primary_equip': '0x04'}  # aux1 on
+
+            controller = PoolController()
+            result = controller.set_aux_equipment(1, False)
+
+            assert result is False
+
+            # Check output
+            captured = capsys.readouterr()
+            assert "Aux1 → OFF — ✗ NO ACK" in captured.out
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_set_aux_equipment_verbose(self, mock_connection_class, capsys):
+        """Test auxiliary equipment control with verbose output."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.send_packet.return_value = True
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = {'primary_equip': '0x00'}
+
+            controller = PoolController()
+            result = controller.set_aux_equipment(2, True, verbose=True)
+
+            assert result is True
+
+            # Check verbose output shows packet hex
+            captured = capsys.readouterr()
+            assert "→" in captured.out  # Packet hex output
+            assert "Aux2 → ON" in captured.out
+
+    def test_set_aux_equipment_invalid_aux_number(self):
+        """Test invalid aux number raises ValueError."""
+        controller = PoolController()
+
+        with pytest.raises(ValueError, match="Invalid aux number '0'. Must be 1-8."):
+            controller.set_aux_equipment(0, True)
+
+        with pytest.raises(ValueError, match="Invalid aux number '9'. Must be 1-8."):
+            controller.set_aux_equipment(9, True)
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_aux_equipment_packet_content(self, mock_connection_class):
+        """Test that aux equipment packet has correct content."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.send_packet.return_value = True
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = {'primary_equip': '0x00'}
+
+            controller = PoolController()
+
+            # Test turning on aux1 (bit 0)
+            controller.set_aux_equipment(1, True)
+
+            # Verify packet structure
+            call_args = mock_connection.send_packet.call_args[0][0]
+            assert len(call_args) == 17  # Command packet length
+            assert call_args[:2] == b"\xFF\xAA"  # Sync bytes
+            assert call_args[8] == 0x01  # Primary equip byte (bit 0 set)
+            assert call_args[14] == 0x01  # Enable bit 0 for primary equip
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_aux_equipment_preserves_other_states(self, mock_connection_class):
+        """Test that aux equipment control preserves other equipment states."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.send_packet.return_value = True
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            # Mock existing state with aux2 already on (bit 1 = 0x02)
+            mock_status.return_value = {'primary_equip': '0x02'}
+
+            controller = PoolController()
+
+            # Turn on aux1 while aux2 is already on
+            controller.set_aux_equipment(1, True)
+
+            # Verify packet preserves aux2 and adds aux1
+            call_args = mock_connection.send_packet.call_args[0][0]
+            assert call_args[8] == 0x03  # Both aux1 (bit 0) and aux2 (bit 1) on
+
+
+class TestServiceModeProtection:
+    """Test service mode safety checks across all command methods."""
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_pool_temperature_blocked_in_service_mode(self, mock_connection_class, capsys):
+        """Test pool temperature setting is blocked when service mode is active."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = {'service_mode': True}
+
+            controller = PoolController()
+            result = controller.set_pool_temperature('80f')
+
+            # Should return False and not send packet
+            assert result is False
+            mock_connection.send_packet.assert_not_called()
+
+            # Should show warning message
+            captured = capsys.readouterr()
+            assert "Service mode is active - commands are disabled for safety" in captured.out
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_spa_temperature_blocked_in_service_mode(self, mock_connection_class, capsys):
+        """Test spa temperature setting is blocked when service mode is active."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = {'service_mode': True}
+
+            controller = PoolController()
+            result = controller.set_spa_temperature('104f')
+
+            assert result is False
+            mock_connection.send_packet.assert_not_called()
+
+            captured = capsys.readouterr()
+            assert "Service mode is active - commands are disabled for safety" in captured.out
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_heater_mode_blocked_in_service_mode(self, mock_connection_class, capsys):
+        """Test heater mode setting is blocked when service mode is active."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = {'service_mode': True}
+
+            controller = PoolController()
+            result = controller.set_heater_mode('heater', 'pool')
+
+            assert result is False
+            mock_connection.send_packet.assert_not_called()
+
+            captured = capsys.readouterr()
+            assert "Service mode is active - commands are disabled for safety" in captured.out
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_aux_equipment_blocked_in_service_mode(self, mock_connection_class, capsys):
+        """Test auxiliary equipment control is blocked when service mode is active."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = {'service_mode': True}
+
+            controller = PoolController()
+            result = controller.set_aux_equipment(1, True)
+
+            assert result is False
+            mock_connection.send_packet.assert_not_called()
+
+            captured = capsys.readouterr()
+            assert "Service mode is active - commands are disabled for safety" in captured.out
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_commands_allowed_when_service_mode_false(self, mock_connection_class):
+        """Test commands work normally when service mode is false."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.send_packet.return_value = True
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = {'service_mode': False}
+
+            controller = PoolController()
+
+            # All commands should work normally
+            assert controller.set_pool_temperature('80f') is True
+            assert controller.set_spa_temperature('104f') is True
+            assert controller.set_heater_mode('heater', 'pool') is True
+
+            # aux command needs additional mocking
+            with patch.object(controller, 'get_status') as mock_aux_status:
+                mock_aux_status.return_value = {'primary_equip': '0x00', 'service_mode': False}
+                assert controller.set_aux_equipment(1, True) is True
+
+            # Should have sent 4 packets
+            assert mock_connection.send_packet.call_count == 4
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_commands_allowed_when_status_unavailable(self, mock_connection_class):
+        """Test commands work when status check fails (fail open behavior)."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.send_packet.return_value = True
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = None  # Status unavailable
+
+            controller = PoolController()
+            result = controller.set_pool_temperature('80f')
+
+            # Should allow command when status is unavailable (fail open)
+            assert result is True
+            mock_connection.send_packet.assert_called_once()
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_commands_allowed_when_status_exception(self, mock_connection_class):
+        """Test commands work when status check raises exception."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.send_packet.return_value = True
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.side_effect = Exception("Connection error")
+
+            controller = PoolController()
+            result = controller.set_pool_temperature('80f')
+
+            # Should allow command when status check fails (fail open)
+            assert result is True
+            mock_connection.send_packet.assert_called_once()
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_service_mode_check_uses_short_timeout(self, mock_connection_class):
+        """Test that service mode check uses a short timeout."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            mock_status.return_value = {'service_mode': False}
+
+            controller = PoolController()
+            controller.set_pool_temperature('80f')
+
+            # Should call get_status with 2.0 second timeout for service mode check
+            # and then again during normal operation
+            assert mock_status.call_count >= 1
+            # First call should be with 2.0 timeout for service mode check
+            first_call = mock_status.call_args_list[0]
+            assert first_call[1]['timeout'] == 2.0

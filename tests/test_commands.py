@@ -2,7 +2,14 @@
 
 from unittest.mock import Mock, patch
 
-from pycompool.commands import set_heater_command, set_pool_command, set_spa_command
+import pytest
+
+from pycompool.commands import (
+    set_aux_command,
+    set_heater_command,
+    set_pool_command,
+    set_spa_command,
+)
 
 
 class TestCommands:
@@ -149,3 +156,83 @@ class TestCommands:
             for target in targets:
                 result = set_heater_command(mode, target)
                 assert result is True
+
+    @patch('pycompool.commands.PoolController')
+    def test_set_aux_command_success(self, mock_controller_class):
+        """Test successful aux command."""
+        mock_controller = Mock()
+        mock_controller_class.return_value = mock_controller
+        mock_controller.set_aux_equipment.return_value = True
+
+        result = set_aux_command("aux1", "on")
+
+        assert result is True
+        mock_controller_class.assert_called_once_with(None, None)
+        mock_controller.set_aux_equipment.assert_called_once_with(1, True, False)
+
+    @patch('pycompool.commands.PoolController')
+    def test_set_aux_command_with_options(self, mock_controller_class):
+        """Test aux command with port, baud, and verbose options."""
+        mock_controller = Mock()
+        mock_controller_class.return_value = mock_controller
+        mock_controller.set_aux_equipment.return_value = True
+
+        result = set_aux_command(
+            "aux2",
+            "off",
+            port="/dev/ttyUSB1",
+            baud=19200,
+            verbose=True
+        )
+
+        assert result is True
+        mock_controller_class.assert_called_once_with("/dev/ttyUSB1", 19200)
+        mock_controller.set_aux_equipment.assert_called_once_with(2, False, True)
+
+    @patch('pycompool.commands.PoolController')
+    def test_set_aux_command_failure(self, mock_controller_class):
+        """Test aux command failure."""
+        mock_controller = Mock()
+        mock_controller_class.return_value = mock_controller
+        mock_controller.set_aux_equipment.return_value = False
+
+        result = set_aux_command("aux3", "on")
+
+        assert result is False
+
+    def test_set_aux_command_invalid_aux_name(self):
+        """Test invalid aux name raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid aux name 'invalid'. Must be aux1, aux2, etc."):
+            set_aux_command("invalid", "on")
+
+        with pytest.raises(ValueError, match="Invalid aux name 'aux'. Must be aux1, aux2, etc."):
+            set_aux_command("aux", "on")
+
+        with pytest.raises(ValueError, match="Invalid aux name 'auxX'. Must be aux1, aux2, etc."):
+            set_aux_command("auxX", "on")
+
+    def test_set_aux_command_invalid_state(self):
+        """Test invalid state raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid state 'invalid'. Must be 'on' or 'off'."):
+            set_aux_command("aux1", "invalid")
+
+        with pytest.raises(ValueError, match="Invalid state 'true'. Must be 'on' or 'off'."):
+            set_aux_command("aux1", "true")
+
+    @patch('pycompool.commands.PoolController')
+    def test_set_aux_command_case_insensitive(self, mock_controller_class):
+        """Test aux command with case insensitive state."""
+        mock_controller = Mock()
+        mock_controller_class.return_value = mock_controller
+        mock_controller.set_aux_equipment.return_value = True
+
+        # Test uppercase
+        result = set_aux_command("aux1", "ON")
+        assert result is True
+        mock_controller.set_aux_equipment.assert_called_with(1, True, False)
+
+        # Test mixed case
+        mock_controller.reset_mock()
+        result = set_aux_command("aux1", "Off")
+        assert result is True
+        mock_controller.set_aux_equipment.assert_called_with(1, False, False)
