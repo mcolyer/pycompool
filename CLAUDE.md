@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Python package for controlling Pentair/Compool LX3xxx pool and spa systems via RS-485 serial communication. The project provides a command-line tool `compoolctl` that can set pool and spa temperatures.
+This is a Python package for controlling Pentair/Compool LX3xxx pool and spa systems via RS-485 serial communication. The project provides a command-line tool `compoolctl` that can set pool and spa temperatures, control auxiliary equipment (aux1-aux6), and manage heater modes.
 
 ## Architecture
 
@@ -24,8 +24,8 @@ This is a Python library with a CLI interface for controlling pool systems via R
 
 ### Key Classes
 
-- `PoolController`: Main API for setting temperatures and heater modes
-- `PoolMonitor`: Real-time heartbeat packet monitoring
+- `PoolController`: Main API for setting temperatures, heater modes, and auxiliary equipment control
+- `PoolMonitor`: Real-time heartbeat packet monitoring with equipment status display
 - `SerialConnection`: Connection management with RS-485 support
 - `CLI`: Fire-based command-line interface
 
@@ -62,6 +62,7 @@ uv run mypy src/pycompool
 # Run CLI
 uv run compoolctl set-pool 80f
 uv run compoolctl set-heater heater pool
+uv run compoolctl set-aux aux1 on
 uv run compoolctl monitor
 
 # Test with different serial configurations
@@ -143,8 +144,9 @@ The RS-485 protocol uses:
 - 17-byte packets with checksum
 - ACK responses with 2-second timeout
 - Temperature encoded as celsius * 4 (0-255 range)
-- Enable bits control which setpoint is being modified (bit 5 for pool, bit 6 for spa)
+- Enable bits control which setpoint is being modified (bit 5 for pool, bit 6 for spa, bit 0 for primary equipment)
 - Heat source control using bits 4-7 (bit 4 enables, bits 4-5 for pool, bits 6-7 for spa)
+- Primary equipment control (auxiliary circuits) in byte 8 with aux1=bit2, aux2=bit3, etc.
 
 ## Monitoring and Connection Issues
 
@@ -165,3 +167,74 @@ Serial-to-network bridges may introduce latency and buffering:
 - Check that heartbeat packets arrive every ~2.5 seconds as expected
 - Verify packet structure starts with sync bytes `FF AA`
 - Monitor for connection drops vs. controller stopping transmission
+
+## Implementation Patterns and Best Practices
+
+### Adding New Command Types
+
+When implementing new control commands (like auxiliary equipment), follow this established pattern:
+
+1. **Protocol Layer** (`protocol.py`):
+   - Update `parse_heartbeat_packet()` to extract new status fields from heartbeat packets
+   - Update `create_command_packet()` to support new packet parameters
+   - Add proper bit manipulation for the relevant protocol bytes
+
+2. **Controller Layer** (`controller.py`):
+   - Add new method following naming convention: `set_<feature>_<action>()`
+   - Include service mode safety check as first operation
+   - Preserve existing state when modifying specific bits/fields
+   - Use enable bits to specify which packet fields are being modified
+   - Return boolean indicating success/failure and print user feedback
+
+3. **Commands Layer** (`commands.py`):
+   - Add command wrapper function: `<feature>_command()`
+   - Include standard parameters: port, baud, verbose
+   - Perform input validation and error handling
+   - Pass validated parameters to controller method
+
+4. **CLI Layer** (`cli.py`):
+   - Add CLI method following Fire framework patterns
+   - Use descriptive method names that map to CLI commands
+   - Include comprehensive docstring with examples
+   - Import new command function from commands module
+
+5. **Monitor Integration** (`monitor.py`):
+   - Update status display to show new equipment states
+   - Add flags to main status line for active states
+   - Include detailed status in verbose mode
+
+### Safety and Error Handling
+
+- **Service Mode Protection**: All command methods must check for service mode before sending commands
+- **State Preservation**: When modifying specific bits, always read current state first to preserve other equipment states
+- **Fail-Open Design**: If status checks fail, allow commands to proceed rather than blocking legitimate use
+- **Input Validation**: Validate all user inputs before attempting to send commands
+- **User Feedback**: Provide clear success/failure messages and warnings
+
+### Testing Strategy
+
+For each new feature, implement comprehensive test coverage:
+
+1. **Protocol Tests**: Test packet parsing and creation with various bit patterns
+2. **Controller Tests**: Test method behavior with mocking, including success/failure cases
+3. **Command Tests**: Test validation and error handling scenarios
+4. **Safety Tests**: Test service mode protection across all command methods
+5. **Integration Tests**: Test CLI interface and end-to-end workflows
+
+### Bit Manipulation Guidelines
+
+When working with protocol bytes that control multiple features:
+
+- **Document bit positions**: Clearly comment which bits control which features
+- **Use descriptive constants**: Define meaningful names for bit positions and masks
+- **Preserve state**: Always read current value before modifying specific bits
+- **Test boundary conditions**: Verify behavior at bit boundaries and with multiple bits set
+
+### Protocol Documentation
+
+The controller uses different byte layouts for different system types:
+- **3x00/3830 Systems**: Spa/Pool in bits 0-1, Aux1-Aux6 in bits 2-7
+- **3810 Systems**: High/Low temp in bits 0-1, Aux1-Aux6 in bits 2-7  
+- **3820 Systems**: Aux1-Aux8 in bits 0-7
+
+When implementing equipment control, consider these variations and test with appropriate bit patterns.
