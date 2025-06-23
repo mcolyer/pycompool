@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-01-23
+
 ### Added
 - Auxiliary equipment control commands for aux1-aux8 circuits
 - `compoolctl set-aux <aux_name> <state>` command for controlling auxiliary equipment
