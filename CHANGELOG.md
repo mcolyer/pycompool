@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `compoolctl set-aux <aux_name> <state>` command for controlling auxiliary equipment
 - Real-time auxiliary equipment status display in monitor output
 - Auxiliary equipment state parsing from heartbeat packets (spa_on, pool_on, aux1_on-aux6_on)
-- Comprehensive test coverage for all auxiliary equipment functionality
+- Service mode safety check - all commands are blocked when service mode is active
+- Comprehensive test coverage for all auxiliary equipment functionality and safety features
 
 ## [0.1.2] - 2025-01-18
 
