@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-09-11
+
+### Fixed
+- Auxiliary equipment control now uses correct enable bit 2 instead of bit 0
+- Commands should now receive proper ACK responses from controller hardware
+
 ### Added
 - Auxiliary equipment control commands for aux1-aux8 circuits
 - `compoolctl set-aux <aux_name> <state>` command for controlling auxiliary equipment
