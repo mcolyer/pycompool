@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-09-12
+
+### Fixed
+- **Auxiliary equipment control completely rewritten with proper toggle logic**
+  - Hardware only supports toggling circuits, not setting absolute ON/OFF states
+  - Now reads current state from heartbeat packets and only toggles when needed
+  - Returns `False` when current status cannot be determined (improved error handling)
+  - Sends only specific aux bit instead of full equipment byte (matches Node.js implementation)
+
+### Added
+- `toggle_aux_equipment()` method for direct toggle operations without state checking
+- Smart no-op behavior - skips command when already in desired state
+- Enhanced status messages showing state transitions: "Aux1 OFF → ON — ✓ ACK"
+- Comprehensive test coverage for toggle behavior and edge cases
+
+### Changed
+- **Breaking API behavior**: `set_aux_equipment()` now fails fast when status unavailable
+- Updated reference documentation with detailed toggle protocol explanation
+- Improved error messages and user feedback
+
 ## [0.2.1] - 2025-09-11
 
 ### Fixed
