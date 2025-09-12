@@ -241,8 +241,8 @@ class PoolController:
         else:
             primary_equip = current_primary_equip & ~(1 << bit_position)
 
-        # Use bit 0 to enable primary equipment field
-        enable_bits = 1 << 0
+        # Use bit 2 to enable primary equipment field
+        enable_bits = 1 << 2
 
         packet = create_command_packet(
             primary_equip=primary_equip,
