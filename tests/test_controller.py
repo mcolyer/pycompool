@@ -397,7 +397,7 @@ class TestPoolController:
 
         # Mock get_status to return current state
         with patch.object(PoolController, 'get_status') as mock_status:
-            mock_status.return_value = {'primary_equip': '0x00'}  # No equipment on
+            mock_status.return_value = {'aux1_on': False}  # Aux1 currently OFF
 
             controller = PoolController()
             result = controller.set_aux_equipment(1, True)
@@ -405,9 +405,9 @@ class TestPoolController:
             assert result is True
             mock_connection.send_packet.assert_called_once()
 
-            # Check output
+            # Check output (new format shows current → desired)
             captured = capsys.readouterr()
-            assert "Aux1 → ON — ✓ ACK" in captured.out
+            assert "Aux1 OFF → ON — ✓ ACK" in captured.out
 
     @patch('pycompool.controller.SerialConnection')
     def test_set_aux_equipment_failure(self, mock_connection_class, capsys):
@@ -417,16 +417,16 @@ class TestPoolController:
         mock_connection.send_packet.return_value = False
 
         with patch.object(PoolController, 'get_status') as mock_status:
-            mock_status.return_value = {'primary_equip': '0x04'}  # aux1 on
+            mock_status.return_value = {'aux1_on': True}  # Aux1 currently ON
 
             controller = PoolController()
             result = controller.set_aux_equipment(1, False)
 
             assert result is False
 
-            # Check output
+            # Check output (toggle command sent but failed)
             captured = capsys.readouterr()
-            assert "Aux1 → OFF — ✗ NO ACK" in captured.out
+            assert "Aux1 ON → OFF — ✗ NO ACK" in captured.out
 
     @patch('pycompool.controller.SerialConnection')
     def test_set_aux_equipment_verbose(self, mock_connection_class, capsys):
@@ -436,7 +436,7 @@ class TestPoolController:
         mock_connection.send_packet.return_value = True
 
         with patch.object(PoolController, 'get_status') as mock_status:
-            mock_status.return_value = {'primary_equip': '0x00'}
+            mock_status.return_value = {'aux2_on': False}  # Aux2 currently OFF
 
             controller = PoolController()
             result = controller.set_aux_equipment(2, True, verbose=True)
@@ -446,7 +446,7 @@ class TestPoolController:
             # Check verbose output shows packet hex
             captured = capsys.readouterr()
             assert "→" in captured.out  # Packet hex output
-            assert "Aux2 → ON" in captured.out
+            assert "Aux2 OFF → ON" in captured.out
 
     def test_set_aux_equipment_invalid_aux_number(self):
         """Test invalid aux number raises ValueError."""
@@ -460,45 +460,87 @@ class TestPoolController:
 
     @patch('pycompool.controller.SerialConnection')
     def test_aux_equipment_packet_content(self, mock_connection_class):
-        """Test that aux equipment packet has correct content."""
+        """Test that aux equipment packet has correct content for toggle command."""
         mock_connection = Mock()
         mock_connection_class.return_value = mock_connection
         mock_connection.send_packet.return_value = True
 
         with patch.object(PoolController, 'get_status') as mock_status:
-            mock_status.return_value = {'primary_equip': '0x00'}
+            # Mock aux1 as OFF, so turning it ON will send toggle command
+            mock_status.return_value = {'aux1_on': False}
 
             controller = PoolController()
 
-            # Test turning on aux1 (bit 0)
+            # Test turning on aux1 - should send toggle since it's currently OFF
             controller.set_aux_equipment(1, True)
 
-            # Verify packet structure
+            # Verify packet structure - should only set bit 0 for aux1 toggle
             call_args = mock_connection.send_packet.call_args[0][0]
             assert len(call_args) == 17  # Command packet length
             assert call_args[:2] == b"\xFF\xAA"  # Sync bytes
-            assert call_args[8] == 0x01  # Primary equip byte (bit 0 set)
+            assert call_args[8] == 0x01  # Primary equip byte (bit 0 set for aux1)
             assert call_args[14] == 0x04  # Enable bit 2 for primary equip
 
     @patch('pycompool.controller.SerialConnection')
-    def test_aux_equipment_preserves_other_states(self, mock_connection_class):
-        """Test that aux equipment control preserves other equipment states."""
+    def test_aux_equipment_no_op_when_already_in_desired_state(self, mock_connection_class):
+        """Test that aux equipment doesn't send command when already in desired state."""
         mock_connection = Mock()
         mock_connection_class.return_value = mock_connection
         mock_connection.send_packet.return_value = True
 
         with patch.object(PoolController, 'get_status') as mock_status:
-            # Mock existing state with aux2 already on (bit 1 = 0x02)
-            mock_status.return_value = {'primary_equip': '0x02'}
+            # Mock aux1 as already ON
+            mock_status.return_value = {'aux1_on': True}
 
             controller = PoolController()
 
-            # Turn on aux1 while aux2 is already on
-            controller.set_aux_equipment(1, True)
+            # Try to turn on aux1 when it's already on - should be no-op
+            result = controller.set_aux_equipment(1, True)
 
-            # Verify packet preserves aux2 and adds aux1
+            # Should return True but not send any packet
+            assert result is True
+            mock_connection.send_packet.assert_not_called()
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_aux_equipment_toggle_method(self, mock_connection_class):
+        """Test that toggle_aux_equipment always sends toggle command."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+        mock_connection.send_packet.return_value = True
+
+        with patch.object(PoolController, '_check_service_mode') as mock_service:
+            mock_service.return_value = False
+
+            controller = PoolController()
+
+            # Test toggling aux3
+            controller.toggle_aux_equipment(3)
+
+            # Verify packet structure - should set bit 2 for aux3
             call_args = mock_connection.send_packet.call_args[0][0]
-            assert call_args[8] == 0x03  # Both aux1 (bit 0) and aux2 (bit 1) on
+            assert len(call_args) == 17  # Command packet length
+            assert call_args[:2] == b"\xFF\xAA"  # Sync bytes
+            assert call_args[8] == 0x04  # Primary equip byte (bit 2 set for aux3)
+            assert call_args[14] == 0x04  # Enable bit 2 for primary equip
+
+    @patch('pycompool.controller.SerialConnection')
+    def test_aux_equipment_fails_when_status_unavailable(self, mock_connection_class):
+        """Test that aux equipment returns False when current status can't be read."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            # Mock get_status to return None (status unavailable)
+            mock_status.return_value = None
+
+            controller = PoolController()
+
+            # Should return False when status can't be read
+            result = controller.set_aux_equipment(1, True)
+
+            assert result is False
+            # No packet should be sent
+            mock_connection.send_packet.assert_not_called()
 
 
 class TestServiceModeProtection:
