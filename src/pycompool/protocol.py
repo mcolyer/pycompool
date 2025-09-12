@@ -139,7 +139,7 @@ def parse_heartbeat_packet(data: bytes) -> Optional[dict]:
     minutes, hours = data[6], data[7]
     primary_equip = data[8]
     secondary_equip = data[9]
-    data[10]
+    delay_heat_source = data[10]  # Delay/Heat source byte
     water_temp = data[11]  # Pool water temp in 0.25°C
     solar_temp = data[12]  # Pool solar temp in 0.5°C
     spa_water_temp = data[13]  # Spa water temp in 0.25°C (3830 only)
@@ -161,6 +161,10 @@ def parse_heartbeat_packet(data: bytes) -> Optional[dict]:
         'solar_on': bool(secondary_equip & 0x04),
         'remotes_enabled': bool(secondary_equip & 0x08),
         'freeze_mode': bool(secondary_equip & 0x80),
+        # Heat source settings (bits 4-7 of delay_heat_source byte)
+        'pool_heat_source': (delay_heat_source >> 4) & 0x03,  # Bits 4-5
+        'spa_heat_source': (delay_heat_source >> 6) & 0x03,   # Bits 6-7
+        'delay_heat_source_byte': delay_heat_source,  # Raw byte for debugging
         # Primary equipment state (auxiliary circuits - 3820 system layout)
         'aux1_on': bool(primary_equip & 0x01),     # Bit 0
         'aux2_on': bool(primary_equip & 0x02),     # Bit 1

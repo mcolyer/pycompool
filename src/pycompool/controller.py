@@ -170,13 +170,22 @@ class PoolController:
             'solar-only': 0b11
         }
 
-        # Calculate heat source byte
+        # Get current heat source state to preserve other target's settings
+        current_status = self.get_status(timeout=2.0)
+        if current_status:
+            current_heat_source = current_status.get('delay_heat_source_byte', 0)
+        else:
+            # If we can't read current state, start with zero (fail open)
+            current_heat_source = 0
+
+        # Calculate heat source byte by preserving existing settings
         # Pool uses bits 4-5, Spa uses bits 6-7
-        heat_source = 0
         if target == 'pool':
-            heat_source = mode_bits[mode] << 4  # Bits 4-5
+            # Clear pool bits (4-5) but preserve spa bits (6-7) and delay bits (0-3)
+            heat_source = (current_heat_source & 0b11001111) | (mode_bits[mode] << 4)
         else:  # spa
-            heat_source = mode_bits[mode] << 6  # Bits 6-7
+            # Clear spa bits (6-7) but preserve pool bits (4-5) and delay bits (0-3)
+            heat_source = (current_heat_source & 0b00111111) | (mode_bits[mode] << 6)
 
         enable_bits = 1 << 4  # Enable heat source field (bit 4)
 

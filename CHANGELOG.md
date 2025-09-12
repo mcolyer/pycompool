@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Spa heater control now works correctly**
+  - Fixed issue where `set_heater off spa` was failing with "NO ACK" error
+  - Heat source byte now preserves existing pool/spa settings when updating specific target
+  - Uses proper bit masking to update only pool bits (4-5) or spa bits (6-7) independently
+  - Added heat source state parsing from heartbeat packets
+
 ## [0.2.2] - 2025-09-12
 
 ### Fixed
