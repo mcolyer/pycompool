@@ -478,7 +478,7 @@ class TestPoolController:
             assert len(call_args) == 17  # Command packet length
             assert call_args[:2] == b"\xFF\xAA"  # Sync bytes
             assert call_args[8] == 0x01  # Primary equip byte (bit 0 set)
-            assert call_args[14] == 0x01  # Enable bit 0 for primary equip
+            assert call_args[14] == 0x04  # Enable bit 2 for primary equip
 
     @patch('pycompool.controller.SerialConnection')
     def test_aux_equipment_preserves_other_states(self, mock_connection_class):
