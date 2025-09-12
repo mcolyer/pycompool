@@ -180,6 +180,8 @@ class TestPoolController:
         mock_connection.send_packet.return_value = True
 
         controller = PoolController()
+        # Mock get_status to return a status with heat source byte
+        controller.get_status = Mock(return_value={'delay_heat_source_byte': 0x00})
         result = controller.set_heater_mode("heater", "pool")
 
         assert result is True
@@ -197,6 +199,8 @@ class TestPoolController:
         mock_connection.send_packet.return_value = False
 
         controller = PoolController()
+        # Mock get_status to return a status with heat source byte
+        controller.get_status = Mock(return_value={'delay_heat_source_byte': 0x00})
         result = controller.set_heater_mode("solar-only", "spa")
 
         assert result is False
@@ -213,6 +217,8 @@ class TestPoolController:
         mock_connection.send_packet.return_value = True
 
         controller = PoolController()
+        # Mock get_status to return a status with heat source byte
+        controller.get_status = Mock(return_value={'delay_heat_source_byte': 0x00})
         result = controller.set_heater_mode("off", "pool", verbose=True)
 
         assert result is True
@@ -244,6 +250,8 @@ class TestPoolController:
         mock_connection.send_packet.return_value = True
 
         controller = PoolController()
+        # Mock get_status to return a status with heat source byte
+        controller.get_status = Mock(return_value={'delay_heat_source_byte': 0x00})
 
         # Test each mode for pool
         test_cases = [
@@ -272,6 +280,8 @@ class TestPoolController:
         mock_connection.send_packet.return_value = True
 
         controller = PoolController()
+        # Mock get_status to return a status with heat source byte
+        controller.get_status = Mock(return_value={'delay_heat_source_byte': 0x00})
 
         # Test each mode for spa
         test_cases = [
