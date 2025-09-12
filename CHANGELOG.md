@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2025-09-12
+
 ### Fixed
 - **Spa heater control now works correctly**
   - Fixed issue where `set_heater off spa` was failing with "NO ACK" error
