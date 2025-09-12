@@ -199,6 +199,9 @@ class PoolController:
         """
         Set the state of an auxiliary equipment circuit.
 
+        The hardware only supports toggling, so this method reads the current state
+        and only sends a toggle command if the current state differs from desired state.
+
         Args:
             aux_num: Auxiliary circuit number (1-8)
             state: True to turn on, False to turn off
@@ -222,24 +225,24 @@ class PoolController:
         if not (1 <= aux_num <= 8):
             raise ValueError(f"Invalid aux number '{aux_num}'. Must be 1-8.")
 
-        # Map aux number to bit position
-        # aux1 = bit 0, aux2 = bit 1, etc. (3820 system layout)
-        bit_position = aux_num - 1
-
-        # Get current status to preserve other equipment states
+        # Get current status to check if toggle is needed
         current_status = self.get_status(timeout=2.0)
-        current_primary_equip = 0
-
-        if current_status:
-            # Extract current primary equipment byte from hex string
-            primary_hex = current_status.get('primary_equip', '0x00')
-            current_primary_equip = int(primary_hex, 16)
-
-        # Set or clear the bit for this aux circuit
-        if state:
-            primary_equip = current_primary_equip | (1 << bit_position)
+        if not current_status:
+            print("⚠️  Could not read current status - sending toggle command anyway")
+            current_aux_state = None
         else:
-            primary_equip = current_primary_equip & ~(1 << bit_position)
+            # Check current aux state from heartbeat packet
+            current_aux_state = current_status.get(f'aux{aux_num}_on', False)
+
+        # Only toggle if current state differs from desired state
+        if current_aux_state is not None and current_aux_state == state:
+            print(f"Aux{aux_num} already {'ON' if state else 'OFF'} — no action needed")
+            return True
+
+        # Send toggle command - only set the bit for this specific aux circuit
+        # The hardware interprets set bits as "toggle this circuit"
+        bit_position = aux_num - 1
+        primary_equip = 1 << bit_position  # Only the aux bit, not full state
 
         # Use bit 2 to enable primary equipment field
         enable_bits = 1 << 2
@@ -254,8 +257,60 @@ class PoolController:
 
         success = self.connection.send_packet(packet)
 
-        print(f"Aux{aux_num} → {'ON' if state else 'OFF'} — "
-              f"{'✓ ACK' if success else '✗ NO ACK'}")
+        if current_aux_state is not None:
+            print(f"Aux{aux_num} {current_aux_state and 'ON' or 'OFF'} → {'ON' if state else 'OFF'} — "
+                  f"{'✓ ACK' if success else '✗ NO ACK'}")
+        else:
+            print(f"Aux{aux_num} → {'ON' if state else 'OFF'} — "
+                  f"{'✓ ACK' if success else '✗ NO ACK'}")
+
+        return success
+
+    def toggle_aux_equipment(self, aux_num: int, verbose: bool = False) -> bool:
+        """
+        Toggle an auxiliary equipment circuit regardless of current state.
+
+        This method always sends a toggle command, matching the Node.js behavior.
+        Use this when you want to toggle without checking current state.
+
+        Args:
+            aux_num: Auxiliary circuit number (1-8)
+            verbose: Enable verbose output
+
+        Returns:
+            True if command was acknowledged, False otherwise
+
+        Example:
+            >>> controller = PoolController()
+            >>> controller.toggle_aux_equipment(1)  # Toggle aux1
+            True
+        """
+        # Check if system is in service mode
+        if self._check_service_mode():
+            return False
+
+        # Validate aux number
+        if not (1 <= aux_num <= 8):
+            raise ValueError(f"Invalid aux number '{aux_num}'. Must be 1-8.")
+
+        # Send toggle command - only set the bit for this specific aux circuit
+        bit_position = aux_num - 1
+        primary_equip = 1 << bit_position  # Only the aux bit, not full state
+
+        # Use bit 2 to enable primary equipment field
+        enable_bits = 1 << 2
+
+        packet = create_command_packet(
+            primary_equip=primary_equip,
+            enable_bits=enable_bits
+        )
+
+        if verbose:
+            print(f"→ {packet.hex(' ')}")
+
+        success = self.connection.send_packet(packet)
+
+        print(f"Aux{aux_num} TOGGLE — {'✓ ACK' if success else '✗ NO ACK'}")
 
         return success
 
