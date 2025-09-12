@@ -523,6 +523,25 @@ class TestPoolController:
             assert call_args[8] == 0x04  # Primary equip byte (bit 2 set for aux3)
             assert call_args[14] == 0x04  # Enable bit 2 for primary equip
 
+    @patch('pycompool.controller.SerialConnection')
+    def test_aux_equipment_fails_when_status_unavailable(self, mock_connection_class):
+        """Test that aux equipment returns False when current status can't be read."""
+        mock_connection = Mock()
+        mock_connection_class.return_value = mock_connection
+
+        with patch.object(PoolController, 'get_status') as mock_status:
+            # Mock get_status to return None (status unavailable)
+            mock_status.return_value = None
+
+            controller = PoolController()
+
+            # Should return False when status can't be read
+            result = controller.set_aux_equipment(1, True)
+
+            assert result is False
+            # No packet should be sent
+            mock_connection.send_packet.assert_not_called()
+
 
 class TestServiceModeProtection:
     """Test service mode safety checks across all command methods."""

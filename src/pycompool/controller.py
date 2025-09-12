@@ -228,14 +228,13 @@ class PoolController:
         # Get current status to check if toggle is needed
         current_status = self.get_status(timeout=2.0)
         if not current_status:
-            print("⚠️  Could not read current status - sending toggle command anyway")
-            current_aux_state = None
-        else:
-            # Check current aux state from heartbeat packet
-            current_aux_state = current_status.get(f'aux{aux_num}_on', False)
+            return False
+
+        # Check current aux state from heartbeat packet
+        current_aux_state = current_status.get(f'aux{aux_num}_on', False)
 
         # Only toggle if current state differs from desired state
-        if current_aux_state is not None and current_aux_state == state:
+        if current_aux_state == state:
             print(f"Aux{aux_num} already {'ON' if state else 'OFF'} — no action needed")
             return True
 
@@ -257,12 +256,8 @@ class PoolController:
 
         success = self.connection.send_packet(packet)
 
-        if current_aux_state is not None:
-            print(f"Aux{aux_num} {current_aux_state and 'ON' or 'OFF'} → {'ON' if state else 'OFF'} — "
-                  f"{'✓ ACK' if success else '✗ NO ACK'}")
-        else:
-            print(f"Aux{aux_num} → {'ON' if state else 'OFF'} — "
-                  f"{'✓ ACK' if success else '✗ NO ACK'}")
+        print(f"Aux{aux_num} {current_aux_state and 'ON' or 'OFF'} → {'ON' if state else 'OFF'} — "
+              f"{'✓ ACK' if success else '✗ NO ACK'}")
 
         return success
 
