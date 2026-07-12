@@ -44,7 +44,7 @@ class PoolController:
         """
         try:
             status = self.get_status(timeout=2.0)
-            if status and status.get('service_mode', False):
+            if status and status.get("service_mode", False):
                 print("⚠️  Service mode is active - commands are disabled for safety")
                 return True
         except Exception:
@@ -76,10 +76,7 @@ class PoolController:
         temp_byte = celsius_to_byte(temp_celsius)
         enable_bits = 1 << 5  # Enable pool temperature field
 
-        packet = create_command_packet(
-            pool_temp=temp_byte,
-            enable_bits=enable_bits
-        )
+        packet = create_command_packet(pool_temp=temp_byte, enable_bits=enable_bits)
 
         if verbose:
             print(f"→ {packet.hex(' ')}")
@@ -87,8 +84,10 @@ class PoolController:
         success = self.connection.send_packet(packet)
         temp_fahrenheit = celsius_to_fahrenheit(temp_celsius)
 
-        print(f"Pool set-point → {temp_fahrenheit:.1f} °F — "
-              f"{'✓ ACK' if success else '✗ NO ACK'}")
+        print(
+            f"Pool set-point → {temp_fahrenheit:.1f} °F — "
+            f"{'✓ ACK' if success else '✗ NO ACK'}"
+        )
 
         return success
 
@@ -116,10 +115,7 @@ class PoolController:
         temp_byte = celsius_to_byte(temp_celsius)
         enable_bits = 1 << 6  # Enable spa temperature field
 
-        packet = create_command_packet(
-            spa_temp=temp_byte,
-            enable_bits=enable_bits
-        )
+        packet = create_command_packet(spa_temp=temp_byte, enable_bits=enable_bits)
 
         if verbose:
             print(f"→ {packet.hex(' ')}")
@@ -127,8 +123,10 @@ class PoolController:
         success = self.connection.send_packet(packet)
         temp_fahrenheit = celsius_to_fahrenheit(temp_celsius)
 
-        print(f"Spa set-point → {temp_fahrenheit:.1f} °F — "
-              f"{'✓ ACK' if success else '✗ NO ACK'}")
+        print(
+            f"Spa set-point → {temp_fahrenheit:.1f} °F — "
+            f"{'✓ ACK' if success else '✗ NO ACK'}"
+        )
 
         return success
 
@@ -154,33 +152,37 @@ class PoolController:
             return False
 
         # Validate inputs
-        valid_modes = {'off', 'heater', 'solar-priority', 'solar-only'}
-        valid_targets = {'pool', 'spa'}
+        valid_modes = {"off", "heater", "solar-priority", "solar-only"}
+        valid_targets = {"pool", "spa"}
 
         if mode not in valid_modes:
-            raise ValueError(f"Invalid mode '{mode}'. Must be one of: {', '.join(valid_modes)}")
+            raise ValueError(
+                f"Invalid mode '{mode}'. Must be one of: {', '.join(valid_modes)}"
+            )
         if target not in valid_targets:
-            raise ValueError(f"Invalid target '{target}'. Must be one of: {', '.join(valid_targets)}")
+            raise ValueError(
+                f"Invalid target '{target}'. Must be one of: {', '.join(valid_targets)}"
+            )
 
         # Map mode to bits
         mode_bits = {
-            'off': 0b00,
-            'heater': 0b01,
-            'solar-priority': 0b10,
-            'solar-only': 0b11
+            "off": 0b00,
+            "heater": 0b01,
+            "solar-priority": 0b10,
+            "solar-only": 0b11,
         }
 
         # Get current heat source state to preserve other target's settings
         current_status = self.get_status(timeout=2.0)
         if current_status:
-            current_heat_source = current_status.get('delay_heat_source_byte', 0)
+            current_heat_source = current_status.get("delay_heat_source_byte", 0)
         else:
             # If we can't read current state, start with zero (fail open)
             current_heat_source = 0
 
         # Calculate heat source byte by preserving existing settings
         # Pool uses bits 4-5, Spa uses bits 6-7
-        if target == 'pool':
+        if target == "pool":
             # Clear pool bits (4-5) but preserve spa bits (6-7) and delay bits (0-3)
             heat_source = (current_heat_source & 0b11001111) | (mode_bits[mode] << 4)
         else:  # spa
@@ -189,22 +191,23 @@ class PoolController:
 
         enable_bits = 1 << 4  # Enable heat source field (bit 4)
 
-        packet = create_command_packet(
-            heat_source=heat_source,
-            enable_bits=enable_bits
-        )
+        packet = create_command_packet(heat_source=heat_source, enable_bits=enable_bits)
 
         if verbose:
             print(f"→ {packet.hex(' ')}")
 
         success = self.connection.send_packet(packet)
 
-        print(f"{target.capitalize()} heating → {mode} — "
-              f"{'✓ ACK' if success else '✗ NO ACK'}")
+        print(
+            f"{target.capitalize()} heating → {mode} — "
+            f"{'✓ ACK' if success else '✗ NO ACK'}"
+        )
 
         return success
 
-    def set_aux_equipment(self, aux_num: int, state: bool, verbose: bool = False) -> bool:
+    def set_aux_equipment(
+        self, aux_num: int, state: bool, verbose: bool = False
+    ) -> bool:
         """
         Set the state of an auxiliary equipment circuit.
 
@@ -240,7 +243,7 @@ class PoolController:
             return False
 
         # Check current aux state from heartbeat packet
-        current_aux_state = current_status.get(f'aux{aux_num}_on', False)
+        current_aux_state = current_status.get(f"aux{aux_num}_on", False)
 
         # Only toggle if current state differs from desired state
         if current_aux_state == state:
@@ -256,8 +259,7 @@ class PoolController:
         enable_bits = 1 << 2
 
         packet = create_command_packet(
-            primary_equip=primary_equip,
-            enable_bits=enable_bits
+            primary_equip=primary_equip, enable_bits=enable_bits
         )
 
         if verbose:
@@ -265,8 +267,10 @@ class PoolController:
 
         success = self.connection.send_packet(packet)
 
-        print(f"Aux{aux_num} {current_aux_state and 'ON' or 'OFF'} → {'ON' if state else 'OFF'} — "
-              f"{'✓ ACK' if success else '✗ NO ACK'}")
+        print(
+            f"Aux{aux_num} {current_aux_state and 'ON' or 'OFF'} → {'ON' if state else 'OFF'} — "
+            f"{'✓ ACK' if success else '✗ NO ACK'}"
+        )
 
         return success
 
@@ -305,8 +309,7 @@ class PoolController:
         enable_bits = 1 << 2
 
         packet = create_command_packet(
-            primary_equip=primary_equip,
-            enable_bits=enable_bits
+            primary_equip=primary_equip, enable_bits=enable_bits
         )
 
         if verbose:
@@ -334,7 +337,9 @@ class PoolController:
             >>> if status:
             ...     print(f"Pool temp: {status['pool_water_temp_f']:.1f}°F")
         """
-        for packet_data in self.connection.read_packets(packet_size=24, timeout=timeout):
+        for packet_data in self.connection.read_packets(
+            packet_size=24, timeout=timeout
+        ):
             parsed = parse_heartbeat_packet(packet_data)
             if parsed:
                 return parsed

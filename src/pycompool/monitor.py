@@ -42,6 +42,7 @@ class PoolMonitor:
 
         Monitors until Ctrl-C is pressed or an error occurs.
         """
+
         # Set up signal handler for graceful exit
         def signal_handler(signum: int, frame: Any) -> None:
             print("\n\nStopping monitor...")
@@ -49,8 +50,10 @@ class PoolMonitor:
 
         signal.signal(signal.SIGINT, signal_handler)
 
-        print(f"Monitoring {self.connection.port} at {self.connection.baud} "
-              f"baud for heartbeat packets...")
+        print(
+            f"Monitoring {self.connection.port} at {self.connection.baud} "
+            f"baud for heartbeat packets..."
+        )
         print("Press Ctrl-C to exit\n")
 
         try:
@@ -95,19 +98,19 @@ class PoolMonitor:
 
         # Build status flags
         status_flags = []
-        if parsed['service_mode']:
+        if parsed["service_mode"]:
             status_flags.append("SERVICE")
-        if parsed['heater_on']:
+        if parsed["heater_on"]:
             status_flags.append("HEAT")
-        if parsed['solar_on']:
+        if parsed["solar_on"]:
             status_flags.append("SOLAR")
-        if parsed['freeze_mode']:
+        if parsed["freeze_mode"]:
             status_flags.append("FREEZE")
 
         # Add auxiliary equipment status
         aux_flags = []
         for i in range(1, 9):  # aux1-aux8
-            if parsed.get(f'aux{i}_on', False):
+            if parsed.get(f"aux{i}_on", False):
                 aux_flags.append(f"AUX{i}")
 
         if aux_flags:
@@ -116,33 +119,37 @@ class PoolMonitor:
         status = f" [{'/'.join(status_flags)}]" if status_flags else ""
 
         # Main status line
-        print(f"[{timestamp}] "
-              f"Pool: {parsed['pool_water_temp_f']:.1f}°F/{parsed['desired_pool_temp_f']:.1f}°F  "
-              f"Spa: {parsed['spa_water_temp_f']:.1f}°F/{parsed['desired_spa_temp_f']:.1f}°F  "
-              f"Air: {parsed['air_temp_f']:.1f}°F  "
-              f"Time: {parsed['time']}{status}")
+        print(
+            f"[{timestamp}] "
+            f"Pool: {parsed['pool_water_temp_f']:.1f}°F/{parsed['desired_pool_temp_f']:.1f}°F  "
+            f"Spa: {parsed['spa_water_temp_f']:.1f}°F/{parsed['desired_spa_temp_f']:.1f}°F  "
+            f"Air: {parsed['air_temp_f']:.1f}°F  "
+            f"Time: {parsed['time']}{status}"
+        )
 
         # Verbose details
         if verbose:
-            print(f"          Version: {parsed['version']} "
-                  f"Primary: {parsed['primary_equip']} "
-                  f"Secondary: {parsed['secondary_equip']}")
-            print(f"          Pool Solar: {parsed['pool_solar_temp']:.1f}°C "
-                  f"Spa Solar: {parsed['spa_solar_temp']:.1f}°C")
+            print(
+                f"          Version: {parsed['version']} "
+                f"Primary: {parsed['primary_equip']} "
+                f"Secondary: {parsed['secondary_equip']}"
+            )
+            print(
+                f"          Pool Solar: {parsed['pool_solar_temp']:.1f}°C "
+                f"Spa Solar: {parsed['spa_solar_temp']:.1f}°C"
+            )
 
             # Show auxiliary equipment states
             aux_states = []
             for i in range(1, 9):  # aux1-aux8
-                state = "ON" if parsed.get(f'aux{i}_on', False) else "OFF"
+                state = "ON" if parsed.get(f"aux{i}_on", False) else "OFF"
                 aux_states.append(f"AUX{i}:{state}")
 
             print(f"          Equipment: {' '.join(aux_states)}")
 
 
 def monitor_command(
-    port: Optional[str] = None,
-    baud: Optional[int] = None,
-    verbose: bool = False
+    port: Optional[str] = None, baud: Optional[int] = None, verbose: bool = False
 ) -> None:
     """
     Command function for monitoring heartbeat packets.

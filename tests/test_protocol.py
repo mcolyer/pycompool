@@ -82,14 +82,14 @@ class TestChecksum:
 
     def test_calculate_checksum(self):
         """Test checksum calculation."""
-        data = b"\xFF\xAA\x00\x01\x82\x09"
+        data = b"\xff\xaa\x00\x01\x82\x09"
         checksum = calculate_checksum(data)
         assert isinstance(checksum, int)
         assert 0 <= checksum <= 0xFFFF
 
     def test_calculate_checksum_consistency(self):
         """Test checksum is consistent."""
-        data = b"\xFF\xAA\x00\x01\x82\x09"
+        data = b"\xff\xaa\x00\x01\x82\x09"
         checksum1 = calculate_checksum(data)
         checksum2 = calculate_checksum(data)
         assert checksum1 == checksum2
@@ -103,12 +103,12 @@ class TestPacketCreation:
         packet = create_command_packet(
             pool_temp=100,
             spa_temp=160,
-            enable_bits=0x60  # Enable pool and spa temps
+            enable_bits=0x60,  # Enable pool and spa temps
         )
 
         assert len(packet) == 17
         assert packet[:2] == SYNC
-        assert packet[8] == 0     # Primary equip
+        assert packet[8] == 0  # Primary equip
         assert packet[11] == 100  # Pool temp
         assert packet[12] == 160  # Spa temp
         assert packet[14] == 0x60  # Enable bits
@@ -119,7 +119,7 @@ class TestPacketCreation:
 
         assert len(packet) == 17
         assert packet[:2] == SYNC
-        assert packet[8] == 0   # Primary equip
+        assert packet[8] == 0  # Primary equip
         assert packet[11] == 0  # Pool temp
         assert packet[12] == 0  # Spa temp
         assert packet[14] == 0  # Enable bits
@@ -128,7 +128,7 @@ class TestPacketCreation:
         """Test command packet with primary equipment control."""
         packet = create_command_packet(
             primary_equip=0x14,  # aux3 and aux5 on (bits 2 and 4)
-            enable_bits=0x01     # Enable primary equip field
+            enable_bits=0x01,  # Enable primary equip field
         )
 
         assert len(packet) == 17
@@ -143,19 +143,19 @@ class TestHeartbeatParsing:
     def create_test_heartbeat(self, **kwargs):
         """Create a test heartbeat packet."""
         defaults = {
-            'version': 0x10,
-            'minutes': 30,
-            'hours': 14,
-            'primary_equip': 0x03,
-            'secondary_equip': 0x0A,
-            'delay_heat_source': 0x00,
-            'water_temp': 100,  # 25°C
-            'solar_temp': 80,   # 40°C
-            'spa_water_temp': 160,  # 40°C
-            'spa_solar_temp': 90,   # 45°C
-            'desired_pool_temp': 120,  # 30°C
-            'desired_spa_temp': 168,   # 42°C
-            'air_temp': 60,  # 30°C
+            "version": 0x10,
+            "minutes": 30,
+            "hours": 14,
+            "primary_equip": 0x03,
+            "secondary_equip": 0x0A,
+            "delay_heat_source": 0x00,
+            "water_temp": 100,  # 25°C
+            "solar_temp": 80,  # 40°C
+            "spa_water_temp": 160,  # 40°C
+            "spa_solar_temp": 90,  # 45°C
+            "desired_pool_temp": 120,  # 30°C
+            "desired_spa_temp": 168,  # 42°C
+            "air_temp": 60,  # 30°C
         }
         defaults.update(kwargs)
 
@@ -163,21 +163,21 @@ class TestHeartbeatParsing:
         packet = bytearray(24)
         packet[:2] = SYNC
         packet[2] = HEARTBEAT_DEST
-        packet[3] = defaults['version']
+        packet[3] = defaults["version"]
         packet[4] = HEARTBEAT_OPCODE
         packet[5] = 0x10  # Info length
-        packet[6] = defaults['minutes']
-        packet[7] = defaults['hours']
-        packet[8] = defaults['primary_equip']
-        packet[9] = defaults['secondary_equip']
-        packet[10] = defaults['delay_heat_source']
-        packet[11] = defaults['water_temp']
-        packet[12] = defaults['solar_temp']
-        packet[13] = defaults['spa_water_temp']
-        packet[14] = defaults['spa_solar_temp']
-        packet[15] = defaults['desired_pool_temp']
-        packet[16] = defaults['desired_spa_temp']
-        packet[17] = defaults['air_temp']
+        packet[6] = defaults["minutes"]
+        packet[7] = defaults["hours"]
+        packet[8] = defaults["primary_equip"]
+        packet[9] = defaults["secondary_equip"]
+        packet[10] = defaults["delay_heat_source"]
+        packet[11] = defaults["water_temp"]
+        packet[12] = defaults["solar_temp"]
+        packet[13] = defaults["spa_water_temp"]
+        packet[14] = defaults["spa_solar_temp"]
+        packet[15] = defaults["desired_pool_temp"]
+        packet[16] = defaults["desired_spa_temp"]
+        packet[17] = defaults["air_temp"]
         packet[18] = 0  # Spare
         packet[19] = 0  # Spare
         packet[20] = 0  # Equipment status
@@ -196,23 +196,23 @@ class TestHeartbeatParsing:
         parsed = parse_heartbeat_packet(packet)
 
         assert parsed is not None
-        assert parsed['type'] == PacketType.HEARTBEAT
-        assert parsed['version'] == 0x10
-        assert parsed['time'] == "14:30"
-        assert parsed['pool_water_temp'] == 25.0
-        assert parsed['spa_water_temp'] == 40.0
-        assert parsed['desired_pool_temp'] == 30.0
-        assert parsed['desired_spa_temp'] == 42.0
+        assert parsed["type"] == PacketType.HEARTBEAT
+        assert parsed["version"] == 0x10
+        assert parsed["time"] == "14:30"
+        assert parsed["pool_water_temp"] == 25.0
+        assert parsed["spa_water_temp"] == 40.0
+        assert parsed["desired_pool_temp"] == 30.0
+        assert parsed["desired_spa_temp"] == 42.0
 
         # Test auxiliary equipment parsing (3820 system layout)
-        assert parsed['aux1_on'] is True     # Bit 0 of 0x03
-        assert parsed['aux2_on'] is True     # Bit 1 of 0x03
-        assert parsed['aux3_on'] is False    # Bit 2 of 0x03
-        assert parsed['aux4_on'] is False    # Bit 3 of 0x03
-        assert parsed['aux5_on'] is False    # Bit 4 of 0x03
-        assert parsed['aux6_on'] is False    # Bit 5 of 0x03
-        assert parsed['aux7_on'] is False    # Bit 6 of 0x03
-        assert parsed['aux8_on'] is False    # Bit 7 of 0x03
+        assert parsed["aux1_on"] is True  # Bit 0 of 0x03
+        assert parsed["aux2_on"] is True  # Bit 1 of 0x03
+        assert parsed["aux3_on"] is False  # Bit 2 of 0x03
+        assert parsed["aux4_on"] is False  # Bit 3 of 0x03
+        assert parsed["aux5_on"] is False  # Bit 4 of 0x03
+        assert parsed["aux6_on"] is False  # Bit 5 of 0x03
+        assert parsed["aux7_on"] is False  # Bit 6 of 0x03
+        assert parsed["aux8_on"] is False  # Bit 7 of 0x03
 
     def test_parse_heartbeat_status_flags(self):
         """Test parsing status flags from secondary equipment byte."""
@@ -220,10 +220,10 @@ class TestHeartbeatParsing:
         packet = self.create_test_heartbeat(secondary_equip=0x06)  # Bits 1,2
         parsed = parse_heartbeat_packet(packet)
 
-        assert parsed['heater_on'] is True
-        assert parsed['solar_on'] is True
-        assert parsed['service_mode'] is False
-        assert parsed['freeze_mode'] is False
+        assert parsed["heater_on"] is True
+        assert parsed["solar_on"] is True
+        assert parsed["service_mode"] is False
+        assert parsed["freeze_mode"] is False
 
     def test_parse_heartbeat_aux_equipment(self):
         """Test parsing auxiliary equipment from primary equipment byte."""
@@ -231,14 +231,14 @@ class TestHeartbeatParsing:
         packet = self.create_test_heartbeat(primary_equip=0x14)  # 0x14 = 0b00010100
         parsed = parse_heartbeat_packet(packet)
 
-        assert parsed['aux1_on'] is False    # Bit 0
-        assert parsed['aux2_on'] is False    # Bit 1
-        assert parsed['aux3_on'] is True     # Bit 2
-        assert parsed['aux4_on'] is False    # Bit 3
-        assert parsed['aux5_on'] is True     # Bit 4
-        assert parsed['aux6_on'] is False    # Bit 5
-        assert parsed['aux7_on'] is False    # Bit 6
-        assert parsed['aux8_on'] is False    # Bit 7
+        assert parsed["aux1_on"] is False  # Bit 0
+        assert parsed["aux2_on"] is False  # Bit 1
+        assert parsed["aux3_on"] is True  # Bit 2
+        assert parsed["aux4_on"] is False  # Bit 3
+        assert parsed["aux5_on"] is True  # Bit 4
+        assert parsed["aux6_on"] is False  # Bit 5
+        assert parsed["aux7_on"] is False  # Bit 6
+        assert parsed["aux8_on"] is False  # Bit 7
 
     def test_parse_heartbeat_invalid_sync(self):
         """Test parsing with invalid sync bytes."""

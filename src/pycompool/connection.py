@@ -39,7 +39,9 @@ class SerialConnection:
             port: Serial port or URL (defaults to COMPOOL_PORT env var)
             baud: Baud rate (defaults to COMPOOL_BAUD env var)
         """
-        self.port = port if port is not None else os.getenv("COMPOOL_PORT", "/dev/ttyUSB0")
+        self.port = (
+            port if port is not None else os.getenv("COMPOOL_PORT", "/dev/ttyUSB0")
+        )
         self.baud = baud or int(os.getenv("COMPOOL_BAUD", str(BAUD_DEFAULT)))
 
     @contextmanager
@@ -59,7 +61,7 @@ class SerialConnection:
         except Exception as e:
             raise ConnectionError(f"Failed to open {self.port}: {e}") from e
         finally:
-            if 'conn' in locals():
+            if "conn" in locals():
                 conn.close()
 
     def _create_connection(self) -> serial.Serial:
@@ -67,18 +69,17 @@ class SerialConnection:
         is_socket = self.port.startswith(("socket://", "rfc2217://"))
 
         kwargs = {
-            'baudrate': self.baud,
-            'bytesize': 8,
-            'parity': 'N',
-            'stopbits': 1,
-            'timeout': 0.3
+            "baudrate": self.baud,
+            "bytesize": 8,
+            "parity": "N",
+            "stopbits": 1,
+            "timeout": 0.3,
         }
 
         # Add RS485 settings for non-network connections
         if not is_socket:
             kwargs["rs485_mode"] = RS485Settings(
-                rts_level_for_tx=True,
-                rts_level_for_rx=False
+                rts_level_for_tx=True, rts_level_for_rx=False
             )
 
         return serial_for_url(self.port, **kwargs)
@@ -118,12 +119,14 @@ class SerialConnection:
                 idx = buf.find(ACK_PREFIX)
                 if idx != -1 and len(buf) - idx >= 9:
                     # Parse ACK packet
-                    _, _, _, _, op, _, acked, *_ = buf[idx:idx+9]
+                    _, _, _, _, op, _, acked, *_ = buf[idx : idx + 9]
                     return op == ACK_OPCODE and acked == ACK_TYPE_OK
 
         return False
 
-    def read_packets(self, packet_size: int = 24, timeout: float = 1.0) -> Generator[bytes, None, None]:
+    def read_packets(
+        self, packet_size: int = 24, timeout: float = 1.0
+    ) -> Generator[bytes, None, None]:
         """
         Generator that yields packets as they are received.
 

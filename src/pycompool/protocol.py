@@ -17,6 +17,7 @@ class ProtocolError(Exception):
 
 class PacketType(Enum):
     """Types of packets in the Compool protocol."""
+
     COMMAND = "command"
     HEARTBEAT = "heartbeat"
     ACK = "ack"
@@ -24,11 +25,11 @@ class PacketType(Enum):
 
 
 # ─────────────────── RS-485 / protocol constants ─────────────────────────
-SYNC = b"\xFF\xAA"
+SYNC = b"\xff\xaa"
 DEST, SRC = 0x00, 0x01
 OPCODE = 0x82
 INFO_LEN = 0x09
-ACK_PREFIX = b"\xFF\xAA\x01"
+ACK_PREFIX = b"\xff\xaa\x01"
 ACK_OPCODE = 0x01
 ACK_TYPE_OK = 0x82
 BAUD_DEFAULT = 9600
@@ -57,7 +58,7 @@ def tempstr_to_celsius(temp_str: str) -> float:
         raise ValueError("temperature must look like 90f or 25c")
 
     value, unit = float(match.group(1)), match.group(2).lower()
-    return (value - 32) * 5 / 9 if unit == 'f' else value
+    return (value - 32) * 5 / 9 if unit == "f" else value
 
 
 def celsius_to_byte(temp_celsius: float) -> int:
@@ -90,7 +91,7 @@ def byte_to_celsius(temp_byte: int) -> float:
 
 def celsius_to_fahrenheit(temp_celsius: float) -> float:
     """Convert celsius to fahrenheit."""
-    return temp_celsius * 9/5 + 32
+    return temp_celsius * 9 / 5 + 32
 
 
 def calculate_checksum(data: bytes) -> int:
@@ -123,7 +124,7 @@ def parse_heartbeat_packet(data: bytes) -> Optional[dict]:
         return None
 
     # Check if this is a heartbeat packet
-    dest, version, opcode, info_len = struct.unpack('BBBB', data[2:6])
+    dest, version, opcode, info_len = struct.unpack("BBBB", data[2:6])
     if dest != HEARTBEAT_DEST or opcode != HEARTBEAT_OPCODE:
         return None
 
@@ -151,45 +152,63 @@ def parse_heartbeat_packet(data: bytes) -> Optional[dict]:
     data[21]
 
     return {
-        'type': PacketType.HEARTBEAT,
-        'version': version,
-        'time': f'{hours:02d}:{minutes:02d}',
-        'primary_equip': f'0x{primary_equip:02x}',
-        'secondary_equip': f'0x{secondary_equip:02x}',
-        'service_mode': bool(secondary_equip & 0x01),
-        'heater_on': bool(secondary_equip & 0x02),
-        'solar_on': bool(secondary_equip & 0x04),
-        'remotes_enabled': bool(secondary_equip & 0x08),
-        'freeze_mode': bool(secondary_equip & 0x80),
+        "type": PacketType.HEARTBEAT,
+        "version": version,
+        "time": f"{hours:02d}:{minutes:02d}",
+        "primary_equip": f"0x{primary_equip:02x}",
+        "secondary_equip": f"0x{secondary_equip:02x}",
+        "service_mode": bool(secondary_equip & 0x01),
+        "heater_on": bool(secondary_equip & 0x02),
+        "solar_on": bool(secondary_equip & 0x04),
+        "remotes_enabled": bool(secondary_equip & 0x08),
+        "freeze_mode": bool(secondary_equip & 0x80),
         # Heat source settings (bits 4-7 of delay_heat_source byte)
-        'pool_heat_source': (delay_heat_source >> 4) & 0x03,  # Bits 4-5
-        'spa_heat_source': (delay_heat_source >> 6) & 0x03,   # Bits 6-7
-        'delay_heat_source_byte': delay_heat_source,  # Raw byte for debugging
+        "pool_heat_source": (delay_heat_source >> 4) & 0x03,  # Bits 4-5
+        "spa_heat_source": (delay_heat_source >> 6) & 0x03,  # Bits 6-7
+        "delay_heat_source_byte": delay_heat_source,  # Raw byte for debugging
         # Primary equipment state (auxiliary circuits - 3820 system layout)
-        'aux1_on': bool(primary_equip & 0x01),     # Bit 0
-        'aux2_on': bool(primary_equip & 0x02),     # Bit 1
-        'aux3_on': bool(primary_equip & 0x04),     # Bit 2
-        'aux4_on': bool(primary_equip & 0x08),     # Bit 3
-        'aux5_on': bool(primary_equip & 0x10),     # Bit 4
-        'aux6_on': bool(primary_equip & 0x20),     # Bit 5
-        'aux7_on': bool(primary_equip & 0x40),     # Bit 6
-        'aux8_on': bool(primary_equip & 0x80),     # Bit 7
-        'pool_water_temp': byte_to_celsius(water_temp) if water_temp else 0,
-        'pool_solar_temp': solar_temp / 2.0 if solar_temp else 0,
-        'spa_water_temp': byte_to_celsius(spa_water_temp) if spa_water_temp else 0,
-        'spa_solar_temp': spa_solar_temp / 2.0 if spa_solar_temp else 0,
-        'desired_pool_temp': byte_to_celsius(desired_pool_temp) if desired_pool_temp else 0,
-        'desired_spa_temp': byte_to_celsius(desired_spa_temp) if desired_spa_temp else 0,
-        'air_temp': air_temp / 2.0 if air_temp else 0,
-        'pool_water_temp_f': celsius_to_fahrenheit(byte_to_celsius(water_temp)) if water_temp else 0,
-        'spa_water_temp_f': celsius_to_fahrenheit(byte_to_celsius(spa_water_temp)) if spa_water_temp else 0,
-        'desired_pool_temp_f': celsius_to_fahrenheit(byte_to_celsius(desired_pool_temp)) if desired_pool_temp else 0,
-        'desired_spa_temp_f': celsius_to_fahrenheit(byte_to_celsius(desired_spa_temp)) if desired_spa_temp else 0,
-        'air_temp_f': celsius_to_fahrenheit(air_temp / 2.0) if air_temp else 0,
+        "aux1_on": bool(primary_equip & 0x01),  # Bit 0
+        "aux2_on": bool(primary_equip & 0x02),  # Bit 1
+        "aux3_on": bool(primary_equip & 0x04),  # Bit 2
+        "aux4_on": bool(primary_equip & 0x08),  # Bit 3
+        "aux5_on": bool(primary_equip & 0x10),  # Bit 4
+        "aux6_on": bool(primary_equip & 0x20),  # Bit 5
+        "aux7_on": bool(primary_equip & 0x40),  # Bit 6
+        "aux8_on": bool(primary_equip & 0x80),  # Bit 7
+        "pool_water_temp": byte_to_celsius(water_temp) if water_temp else 0,
+        "pool_solar_temp": solar_temp / 2.0 if solar_temp else 0,
+        "spa_water_temp": byte_to_celsius(spa_water_temp) if spa_water_temp else 0,
+        "spa_solar_temp": spa_solar_temp / 2.0 if spa_solar_temp else 0,
+        "desired_pool_temp": byte_to_celsius(desired_pool_temp)
+        if desired_pool_temp
+        else 0,
+        "desired_spa_temp": byte_to_celsius(desired_spa_temp)
+        if desired_spa_temp
+        else 0,
+        "air_temp": air_temp / 2.0 if air_temp else 0,
+        "pool_water_temp_f": celsius_to_fahrenheit(byte_to_celsius(water_temp))
+        if water_temp
+        else 0,
+        "spa_water_temp_f": celsius_to_fahrenheit(byte_to_celsius(spa_water_temp))
+        if spa_water_temp
+        else 0,
+        "desired_pool_temp_f": celsius_to_fahrenheit(byte_to_celsius(desired_pool_temp))
+        if desired_pool_temp
+        else 0,
+        "desired_spa_temp_f": celsius_to_fahrenheit(byte_to_celsius(desired_spa_temp))
+        if desired_spa_temp
+        else 0,
+        "air_temp_f": celsius_to_fahrenheit(air_temp / 2.0) if air_temp else 0,
     }
 
 
-def create_command_packet(pool_temp: int = 0, spa_temp: int = 0, heat_source: int = 0, primary_equip: int = 0, enable_bits: int = 0) -> bytes:
+def create_command_packet(
+    pool_temp: int = 0,
+    spa_temp: int = 0,
+    heat_source: int = 0,
+    primary_equip: int = 0,
+    enable_bits: int = 0,
+) -> bytes:
     """
     Create a command packet to send to the controller.
 
@@ -204,12 +223,19 @@ def create_command_packet(pool_temp: int = 0, spa_temp: int = 0, heat_source: in
         17-byte command packet
     """
     header = [
-        *SYNC, DEST, SRC, OPCODE, INFO_LEN,
-        0x00, 0x00,          # minutes, hours
-        primary_equip, 0x00, heat_source,  # primary, secondary, heat-source
+        *SYNC,
+        DEST,
+        SRC,
+        OPCODE,
+        INFO_LEN,
+        0x00,
+        0x00,  # minutes, hours
+        primary_equip,
+        0x00,
+        heat_source,  # primary, secondary, heat-source
         pool_temp,
         spa_temp,
-        0x00,                # switch state
+        0x00,  # switch state
         enable_bits,
     ]
     checksum = calculate_checksum(bytes(header))
