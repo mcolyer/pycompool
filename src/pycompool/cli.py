@@ -26,7 +26,7 @@ class CLI:
         temp: str,
         port: Optional[str] = None,
         baud: Optional[int] = None,
-        verbose: bool = False
+        verbose: bool = False,
     ) -> None:
         """
         Set desired pool temperature.
@@ -48,7 +48,7 @@ class CLI:
         temp: str,
         port: Optional[str] = None,
         baud: Optional[int] = None,
-        verbose: bool = False
+        verbose: bool = False,
     ) -> None:
         """
         Set desired spa temperature.
@@ -71,7 +71,7 @@ class CLI:
         target: str,
         port: Optional[str] = None,
         baud: Optional[int] = None,
-        verbose: bool = False
+        verbose: bool = False,
     ) -> None:
         """
         Set heater/solar mode for pool or spa.
@@ -96,7 +96,7 @@ class CLI:
         state: str,
         port: Optional[str] = None,
         baud: Optional[int] = None,
-        verbose: bool = False
+        verbose: bool = False,
     ) -> None:
         """
         Set auxiliary equipment state.
@@ -119,7 +119,7 @@ class CLI:
         self,
         port: Optional[str] = None,
         baud: Optional[int] = None,
-        verbose: bool = False
+        verbose: bool = False,
     ) -> None:
         """
         Monitor heartbeat packets from the pool controller.
